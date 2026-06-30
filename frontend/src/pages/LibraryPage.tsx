@@ -1,0 +1,151 @@
+// Browse the active server: pick a library, then a searchable grid of titles.
+// Double-clicking a poster opens the item detail.
+
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Search, ServerCrash } from "lucide-react";
+import { api, imageUrl } from "../api/client";
+import { useServers } from "../lib/serverContext";
+import PosterCard from "../components/PosterCard";
+import { EmptyState, Spinner } from "../components/ui";
+
+export default function LibraryPage() {
+  const navigate = useNavigate();
+  const { selectedServer, isLoading: serversLoading } = useServers();
+  const serverId = selectedServer?.id ?? null;
+
+  // The selected library lives in the URL (?lib=…) so that navigating into a
+  // title and pressing Back returns you to the same library, not the first one.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const libraryId = searchParams.get("lib");
+  const [filter, setFilter] = useState("");
+
+  const selectLibrary = (id: string) =>
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.set("lib", id);
+        return p;
+      },
+      { replace: true },
+    );
+
+  const librariesQ = useQuery({
+    queryKey: ["libraries", serverId],
+    queryFn: () => api.getLibraries(serverId!),
+    enabled: serverId != null,
+  });
+
+  // Default to the first browseable library, or reset if the URL points at a
+  // library that doesn't exist on the current server (e.g. after switching).
+  useEffect(() => {
+    const libs = librariesQ.data;
+    if (!libs) return;
+    const browseable = libs.filter((l) => l.type !== "other");
+    if (!browseable.length) return;
+    const valid = libraryId != null && libs.some((l) => l.id === libraryId);
+    if (!valid) selectLibrary(browseable[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [librariesQ.data, libraryId]);
+
+  const itemsQ = useQuery({
+    queryKey: ["items", serverId, libraryId],
+    queryFn: () => api.getItems(serverId!, libraryId!),
+    enabled: serverId != null && libraryId != null,
+  });
+
+  const items = useMemo(() => {
+    const all = itemsQ.data ?? [];
+    const q = filter.trim().toLowerCase();
+    return q ? all.filter((i) => i.title.toLowerCase().includes(q)) : all;
+  }, [itemsQ.data, filter]);
+
+  if (serversLoading) return <Spinner label="Loading…" />;
+
+  if (!selectedServer) {
+    return (
+      <div className="grid h-full place-items-center p-8">
+        <EmptyState title="No media server yet">
+          Add your Plex, Jellyfin, or Emby server in Settings to start browsing your libraries.
+        </EmptyState>
+      </div>
+    );
+  }
+
+  const browseableLibs = (librariesQ.data ?? []).filter((l) => l.type !== "other");
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="border-b border-border px-8 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">{selectedServer.name}</h1>
+            <p className="text-sm text-faint">Browse your libraries and update artwork</p>
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" />
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter titles…"
+              className="w-64 rounded-lg border border-border bg-surface-2 py-2 pl-9 pr-3 text-sm outline-none focus:border-accent"
+            />
+          </div>
+        </div>
+
+        {/* Library tabs */}
+        <div className="mt-5 flex gap-1 overflow-x-auto pb-px">
+          {librariesQ.isLoading && <span className="py-2 text-sm text-faint">Loading libraries…</span>}
+          {browseableLibs.map((lib) => (
+            <button
+              key={lib.id}
+              onClick={() => selectLibrary(lib.id)}
+              className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                libraryId === lib.id
+                  ? "border-accent text-white"
+                  : "border-transparent text-muted hover:text-white"
+              }`}
+            >
+              {lib.title}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        {librariesQ.isError && (
+          <EmptyState icon={<ServerCrash className="size-10" />} title="Couldn't reach the server">
+            {(librariesQ.error as Error).message}
+          </EmptyState>
+        )}
+        {itemsQ.isLoading && <Spinner label="Loading titles…" />}
+        {itemsQ.isError && (
+          <EmptyState icon={<ServerCrash className="size-10" />} title="Couldn't load titles">
+            {(itemsQ.error as Error).message}
+          </EmptyState>
+        )}
+        {itemsQ.data && items.length === 0 && (
+          <EmptyState title={filter ? "No matches" : "This library is empty"} />
+        )}
+
+        {items.length > 0 && (
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]">
+            {items.map((item) => (
+              <PosterCard
+                key={item.id}
+                image={imageUrl(serverId!, item.poster)}
+                title={item.title}
+                subtitle={item.year ? String(item.year) : undefined}
+                kind={item.type}
+                onOpen={() => navigate(`/server/${serverId}/item/${item.id}`)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,102 @@
+// Thin typed wrapper over fetch. All calls are same-origin (/api/...): in dev
+// Vite proxies to the backend, in production FastAPI serves this bundle.
+
+import type {
+  ApplyResult,
+  ConnectionTest,
+  ItemDetail,
+  Library,
+  MediaItem,
+  PosterDBStatus,
+  PosterSearchResults,
+  PosterSet,
+  Server,
+  ServerType,
+} from "../types";
+
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...init,
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body.detail ?? detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+/** Build the proxied image URL for a normalized image ref. */
+export function imageUrl(serverId: number, ref?: string | null): string | undefined {
+  if (!ref) return undefined;
+  return `/api/servers/${serverId}/image?ref=${encodeURIComponent(ref)}`;
+}
+
+export interface ServerInput {
+  name: string;
+  type: ServerType;
+  base_url: string;
+  token: string;
+  is_default: boolean;
+}
+
+export const api = {
+  // -- servers --
+  listServers: () => request<Server[]>("/servers"),
+  createServer: (data: ServerInput) =>
+    request<Server>("/servers", { method: "POST", body: JSON.stringify(data) }),
+  updateServer: (id: number, data: Partial<ServerInput>) =>
+    request<Server>(`/servers/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteServer: (id: number) => request<void>(`/servers/${id}`, { method: "DELETE" }),
+  testServerAdhoc: (data: ServerInput) =>
+    request<ConnectionTest>("/servers/test", { method: "POST", body: JSON.stringify(data) }),
+  testServerSaved: (id: number) =>
+    request<ConnectionTest>(`/servers/${id}/test`, { method: "POST" }),
+
+  // -- libraries / items --
+  getLibraries: (serverId: number) => request<Library[]>(`/servers/${serverId}/libraries`),
+  getItems: (serverId: number, libraryId: string) =>
+    request<MediaItem[]>(`/servers/${serverId}/libraries/${encodeURIComponent(libraryId)}/items`),
+  getItemDetail: (serverId: number, itemId: string) =>
+    request<ItemDetail>(`/servers/${serverId}/items/${encodeURIComponent(itemId)}`),
+
+  // -- posterdb --
+  posterdbStatus: () => request<PosterDBStatus>("/posterdb/status"),
+  setPosterdbCredentials: (email: string, password: string) =>
+    request<PosterDBStatus>("/posterdb/credentials", {
+      method: "PUT",
+      body: JSON.stringify({ email, password }),
+    }),
+  posterdbLogin: () => request<PosterDBStatus>("/posterdb/login", { method: "POST" }),
+  posterdbSearch: (term: string) =>
+    request<PosterSearchResults>(`/posterdb/search?term=${encodeURIComponent(term)}`),
+  posterdbSet: (url: string) =>
+    request<PosterSet>(`/posterdb/set?url=${encodeURIComponent(url)}`),
+  posterdbVerify: (ids: string[]) =>
+    request<Record<string, number>>("/posterdb/verify", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
+  applyPoster: (data: {
+    server_id: number;
+    item_id: string;
+    target: "poster" | "background";
+    download_url?: string;
+    asset_id?: string;
+  }) => request<ApplyResult>("/posterdb/apply", { method: "POST", body: JSON.stringify(data) }),
+};

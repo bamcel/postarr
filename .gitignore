@@ -1,0 +1,25 @@
+# --- Python / backend ---
+backend/.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Runtime data: SQLite db + encryption key + any cached state
+backend/data/*
+!backend/data/.gitkeep
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+*.local
+*.tsbuildinfo
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Claude Code local settings (machine-specific) ---
+.claude/settings.local.json

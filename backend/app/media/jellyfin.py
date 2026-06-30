@@ -1,0 +1,180 @@
+"""Jellyfin client (and base class for the near-identical Emby API).
+
+Auth is an API key sent as ``X-Emby-Token`` (accepted by both Jellyfin and
+Emby). The one notable quirk: image uploads via ``POST /Items/{id}/Images/{type}``
+expect the request **body to be base64-encoded text**, with ``Content-Type`` set
+to the real image mime — sending raw binary yields "Incorrect ContentType".
+"""
+
+from __future__ import annotations
+
+import base64
+from typing import Optional
+
+import httpx
+
+from ..schemas import ItemDetail, NormalizedItem, NormalizedLibrary, NormalizedSeason
+from .base import MediaClient, MediaError
+
+_COLLECTION_TYPE = {"movies": "movie", "tvshows": "show", "homevideos": "movie"}
+_IMAGE_TARGET = {"poster": "Primary", "background": "Backdrop"}
+
+
+class JellyfinClient(MediaClient):
+    server_label = "Jellyfin"
+
+    def __init__(self, base_url: str, token: str):
+        super().__init__(base_url, token)
+        self._user_id: Optional[str] = None
+
+    def _headers(self) -> dict[str, str]:
+        return {"X-Emby-Token": self.token, "Accept": "application/json"}
+
+    async def _get_json(self, client: httpx.AsyncClient, path: str, params: dict | None = None) -> dict:
+        resp = await client.get(self.base_url + path, headers=self._headers(), params=params)
+        if resp.status_code == 401:
+            raise MediaError(f"{self.server_label} rejected the API key (401 Unauthorized).")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def _get_user_id(self, client: httpx.AsyncClient) -> str:
+        """Resolve a user id; some item queries are user-scoped across versions."""
+        if self._user_id:
+            return self._user_id
+        users = await self._get_json(client, "/Users")
+        if not users:
+            raise MediaError(f"{self.server_label} returned no users for this API key.")
+        self._user_id = users[0]["Id"]
+        return self._user_id
+
+    async def test_connection(self) -> tuple[str, str]:
+        try:
+            async with self._client() as client:
+                info = await self._get_json(client, "/System/Info")
+        except MediaError:
+            raise
+        except httpx.HTTPError as exc:
+            raise MediaError(f"Could not reach {self.server_label} at {self.base_url}: {exc}") from exc
+        return info.get("ServerName", self.server_label), str(info.get("Version", ""))
+
+    async def get_libraries(self) -> list[NormalizedLibrary]:
+        async with self._client() as client:
+            data = await self._get_json(client, "/Library/MediaFolders")
+        libs: list[NormalizedLibrary] = []
+        for it in data.get("Items", []):
+            ctype = _COLLECTION_TYPE.get(it.get("CollectionType", ""), "other")
+            libs.append(
+                NormalizedLibrary(
+                    id=it["Id"],
+                    title=it.get("Name", "Library"),
+                    type=ctype,
+                    thumb=self._image_ref(it, "Primary"),
+                )
+            )
+        return libs
+
+    async def get_items(self, library_id: str) -> list[NormalizedItem]:
+        params = {
+            "ParentId": library_id,
+            "Recursive": "true",
+            "IncludeItemTypes": "Movie,Series",
+            "Fields": "ProductionYear",
+            "SortBy": "SortName",
+            "SortOrder": "Ascending",
+            "ImageTypeLimit": "1",
+            "EnableImageTypes": "Primary,Backdrop",
+        }
+        async with self._client() as client:
+            params["userId"] = await self._get_user_id(client)
+            data = await self._get_json(client, "/Items", params)
+        items: list[NormalizedItem] = []
+        for it in data.get("Items", []):
+            kind = "show" if it.get("Type") == "Series" else "movie"
+            items.append(
+                NormalizedItem(
+                    id=it["Id"],
+                    title=it.get("Name", "Untitled"),
+                    year=it.get("ProductionYear"),
+                    type=kind,
+                    poster=self._image_ref(it, "Primary"),
+                    background=self._image_ref(it, "Backdrop"),
+                )
+            )
+        return items
+
+    async def get_item_detail(self, item_id: str) -> ItemDetail:
+        async with self._client() as client:
+            uid = await self._get_user_id(client)
+            data = await self._get_json(
+                client,
+                "/Items",
+                {"Ids": item_id, "userId": uid, "Fields": "Overview,ChildCount,ProductionYear"},
+            )
+            items = data.get("Items", [])
+            if not items:
+                raise MediaError("Item not found.")
+            it = items[0]
+            kind = "show" if it.get("Type") == "Series" else "movie"
+            seasons: list[NormalizedSeason] = []
+            if kind == "show":
+                sdata = await self._get_json(client, f"/Shows/{item_id}/Seasons", {"userId": uid})
+                for s in sdata.get("Items", []):
+                    seasons.append(
+                        NormalizedSeason(
+                            id=s["Id"],
+                            title=s.get("Name", "Season"),
+                            index=s.get("IndexNumber"),
+                            poster=self._image_ref(s, "Primary"),
+                            episode_count=s.get("ChildCount"),
+                        )
+                    )
+        return ItemDetail(
+            id=it["Id"],
+            title=it.get("Name", "Untitled"),
+            year=it.get("ProductionYear"),
+            type=kind,
+            poster=self._image_ref(it, "Primary"),
+            background=self._image_ref(it, "Backdrop"),
+            summary=it.get("Overview"),
+            season_count=it.get("ChildCount") if kind == "show" else None,
+            seasons=seasons,
+        )
+
+    async def set_image(self, item_id: str, target: str, data: bytes, content_type: str) -> None:
+        image_type = _IMAGE_TARGET.get(target, "Primary")
+        url = f"{self.base_url}/Items/{item_id}/Images/{image_type}"
+        body = base64.b64encode(data)  # Jellyfin/Emby require a base64 text body.
+        async with self._client() as client:
+            resp = await client.post(
+                url,
+                content=body,
+                headers={"X-Emby-Token": self.token, "Content-Type": content_type},
+            )
+            if resp.status_code == 401:
+                raise MediaError(f"{self.server_label} rejected the API key while uploading.")
+            if resp.status_code >= 400:
+                raise MediaError(
+                    f"{self.server_label} upload failed ({resp.status_code}): {resp.text[:200]}"
+                )
+
+    async def fetch_image(self, ref: str) -> tuple[bytes, str]:
+        async with self._client() as client:
+            resp = await client.get(self.base_url + "/" + ref.lstrip("/"), headers=self._headers())
+            resp.raise_for_status()
+            return resp.content, resp.headers.get("content-type", "image/jpeg")
+
+    # -- helpers ----------------------------------------------------------
+    @staticmethod
+    def _image_ref(item: dict, image_type: str) -> Optional[str]:
+        item_id = item.get("Id")
+        if not item_id:
+            return None
+        if image_type == "Backdrop":
+            tags = item.get("BackdropImageTags") or []
+            if not tags:
+                return None
+            return f"Items/{item_id}/Images/Backdrop?tag={tags[0]}"
+        tag = (item.get("ImageTags") or {}).get(image_type)
+        if not tag:
+            return None
+        return f"Items/{item_id}/Images/{image_type}?tag={tag}"
