@@ -86,6 +86,58 @@ class ItemDetail(NormalizedItem):
     summary: Optional[str] = None
     season_count: Optional[int] = None
     seasons: list[NormalizedSeason] = Field(default_factory=list)
+    # External provider ids used to query Fanart.tv / TheTVDB, e.g.
+    # {"tmdb": "603", "tvdb": "78901", "imdb": "tt0133093"}.
+    external_ids: dict[str, str] = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Artwork providers (Fanart.tv / AniList / TheTVDB) — multi-type artwork
+# ---------------------------------------------------------------------------
+
+ArtworkType = Literal["poster", "background", "banner", "logo"]
+
+
+class ArtworkItem(BaseModel):
+    id: str
+    provider: str                       # "fanart" | "anilist" | "tvdb"
+    type: ArtworkType
+    kind: Literal["movie", "show", "season"] = "show"
+    season_number: Optional[int] = None
+    title: Optional[str] = None
+    lang: Optional[str] = None
+    likes: Optional[int] = None
+    thumb_url: str                      # preview URL (loaded directly by browser)
+    download_url: str                   # full-res URL the backend fetches to apply
+    # Only poster/background are wired to apply for now; banners/logos are shown
+    # but not yet applyable (per current scope).
+    applyable: bool = True
+    source_url: Optional[str] = None
+
+
+class ArtworkResults(BaseModel):
+    provider: str
+    item_title: Optional[str] = None
+    items: list[ArtworkItem] = Field(default_factory=list)
+    message: Optional[str] = None
+
+
+class ArtworkProviderInfo(BaseModel):
+    name: str
+    label: str
+    configured: bool
+    needs_key: bool
+
+
+class ArtworkSettings(BaseModel):
+    fanart_configured: bool = False
+    tvdb_configured: bool = False
+
+
+class ArtworkSettingsUpdate(BaseModel):
+    fanart_api_key: Optional[str] = None
+    tvdb_api_key: Optional[str] = None
+    tvdb_pin: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -155,8 +207,11 @@ class ApplyRequest(BaseModel):
     server_id: int
     item_id: str
     target: ImageTarget = "poster"
+    # Which source the image comes from — decides how the backend downloads it
+    # ("posterdb" uses the authenticated TPDb session; others are public URLs).
+    provider: str = "posterdb"
     # Provide exactly one source:
-    download_url: Optional[str] = None  # a ThePosterDB asset download URL
+    download_url: Optional[str] = None  # a full image URL to fetch
     asset_id: Optional[str] = None      # a ThePosterDB asset id (resolved to a URL)
 
 

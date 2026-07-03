@@ -10,7 +10,7 @@
 // Thumbnails are proxied through our backend (/api/posterdb/image), so they load
 // without a TPDb session in the browser.
 
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
@@ -41,7 +41,7 @@ interface Props {
  *  be opened further; non-title grids are a concrete set (apply or go back). */
 type GridView = { set: PosterSet; isTitle: boolean; label?: string };
 
-export default function PosterDBPanel({ serverId, item, prefill }: Props) {
+export default function PosterDBBody({ serverId, item, prefill }: Props) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
@@ -178,20 +178,18 @@ export default function PosterDBPanel({ serverId, item, prefill }: Props) {
   // -- credential gate --
   if (statusQ.data && !statusQ.data.configured) {
     return (
-      <PanelShell>
-        <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
-          <AlertCircle className="size-8 text-amber-400" />
-          <p className="text-sm text-muted">
-            Add your ThePosterDB email & password in <span className="text-white">Settings</span> to
-            search and apply posters.
-          </p>
-        </div>
-      </PanelShell>
+      <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+        <AlertCircle className="size-8 text-amber-400" />
+        <p className="text-sm text-muted">
+          Add your ThePosterDB email & password in <span className="text-white">Settings</span> to
+          search and apply posters.
+        </p>
+      </div>
     );
   }
 
   return (
-    <PanelShell>
+    <>
       <form onSubmit={submit} className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" />
         <input
@@ -240,7 +238,7 @@ export default function PosterDBPanel({ serverId, item, prefill }: Props) {
           <p className="text-sm">Search ThePosterDB or paste a poster/set link to begin.</p>
         </div>
       )}
-    </PanelShell>
+    </>
   );
 }
 
@@ -498,17 +496,6 @@ function Thumb({ src, alt, className }: { src: string; alt: string; className: s
         if (n < 2) setTimeout(() => setN((v) => v + 1), 400 * (n + 1));
       }}
     />
-  );
-}
-
-function PanelShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex h-full flex-col border-l border-border bg-surface/70 p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
-        <ImageDown className="size-4 text-accent" /> ThePosterDB
-      </h2>
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-    </div>
   );
 }
 

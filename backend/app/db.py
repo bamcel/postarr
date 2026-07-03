@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS settings (
 """
 
 # Keys in the ``settings`` table whose values are encrypted at rest.
-SECRET_SETTINGS = {"posterdb_password"}
+SECRET_SETTINGS = {"posterdb_password", "fanart_api_key", "tvdb_api_key", "tvdb_pin"}
 
 
 @contextmanager

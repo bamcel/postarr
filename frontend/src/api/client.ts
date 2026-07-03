@@ -3,6 +3,9 @@
 
 import type {
   ApplyResult,
+  ArtworkProviderInfo,
+  ArtworkResults,
+  ArtworkSettings,
   ConnectionTest,
   ItemDetail,
   Library,
@@ -96,7 +99,21 @@ export const api = {
     server_id: number;
     item_id: string;
     target: "poster" | "background";
+    provider?: string;
     download_url?: string;
     asset_id?: string;
   }) => request<ApplyResult>("/posterdb/apply", { method: "POST", body: JSON.stringify(data) }),
+
+  // -- artwork providers (Fanart / AniList / TVDB) --
+  artworkProviders: () => request<ArtworkProviderInfo[]>("/artwork/providers"),
+  getArtworkSettings: () => request<ArtworkSettings>("/artwork/settings"),
+  setArtworkSettings: (data: {
+    fanart_api_key?: string;
+    tvdb_api_key?: string;
+    tvdb_pin?: string;
+  }) => request<ArtworkSettings>("/artwork/settings", { method: "PUT", body: JSON.stringify(data) }),
+  getArtwork: (provider: string, serverId: number, itemId: string) =>
+    request<ArtworkResults>(
+      `/artwork?provider=${provider}&server_id=${serverId}&item_id=${encodeURIComponent(itemId)}`,
+    ),
 };

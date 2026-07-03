@@ -108,12 +108,13 @@ class JellyfinClient(MediaClient):
             data = await self._get_json(
                 client,
                 "/Items",
-                {"Ids": item_id, "userId": uid, "Fields": "Overview,ChildCount,ProductionYear"},
+                {"Ids": item_id, "userId": uid, "Fields": "Overview,ChildCount,ProductionYear,ProviderIds"},
             )
             items = data.get("Items", [])
             if not items:
                 raise MediaError("Item not found.")
             it = items[0]
+            external_ids = {k.lower(): str(v) for k, v in (it.get("ProviderIds") or {}).items() if v}
             kind = "show" if it.get("Type") == "Series" else "movie"
             seasons: list[NormalizedSeason] = []
             if kind == "show":
@@ -138,6 +139,7 @@ class JellyfinClient(MediaClient):
             summary=it.get("Overview"),
             season_count=it.get("ChildCount") if kind == "show" else None,
             seasons=seasons,
+            external_ids=external_ids,
         )
 
     async def set_image(self, item_id: str, target: str, data: bytes, content_type: str) -> None:

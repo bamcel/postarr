@@ -49,6 +49,45 @@ export interface ItemDetail extends MediaItem {
   summary?: string | null;
   season_count?: number | null;
   seasons: Season[];
+  external_ids: Record<string, string>;
+}
+
+// --- Artwork providers (Fanart.tv / AniList / TheTVDB) ---
+
+export type ArtworkType = "poster" | "background" | "banner" | "logo";
+
+export interface ArtworkItem {
+  id: string;
+  provider: string;
+  type: ArtworkType;
+  kind: "movie" | "show" | "season";
+  season_number?: number | null;
+  title?: string | null;
+  lang?: string | null;
+  likes?: number | null;
+  thumb_url: string;
+  download_url: string;
+  applyable: boolean;
+  source_url?: string | null;
+}
+
+export interface ArtworkResults {
+  provider: string;
+  item_title?: string | null;
+  items: ArtworkItem[];
+  message?: string | null;
+}
+
+export interface ArtworkProviderInfo {
+  name: string;
+  label: string;
+  configured: boolean;
+  needs_key: boolean;
+}
+
+export interface ArtworkSettings {
+  fanart_configured: boolean;
+  tvdb_configured: boolean;
 }
 
 export type PosterKind =

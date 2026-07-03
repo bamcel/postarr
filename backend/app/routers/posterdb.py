@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from .. import db
+from ..artwork.base import ArtworkError, download_public_image
 from ..media.base import MediaError
 from ..media.factory import client_for
 from ..posterdb import posterdb
@@ -97,9 +98,14 @@ async def apply(req: ApplyRequest) -> ApplyResult:
     if not source:
         raise HTTPException(status_code=400, detail="Provide download_url or asset_id.")
 
+    # ThePosterDB assets need the authenticated session; other providers
+    # (Fanart/TVDB/AniList) serve public image URLs.
     try:
-        data, content_type = await posterdb.download(source)
-    except PosterDBError as exc:
+        if req.provider == "posterdb":
+            data, content_type = await posterdb.download(source)
+        else:
+            data, content_type = await download_public_image(source)
+    except (PosterDBError, ArtworkError) as exc:
         return ApplyResult(ok=False, message=f"Download failed: {exc}")
 
     try:

@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__, db
 from .config import FRONTEND_DIST
 from .posterdb import posterdb
-from .routers import libraries, posterdb as posterdb_router, servers
+from .routers import artwork, libraries, posterdb as posterdb_router, servers
 
 
 logging.basicConfig(
@@ -48,6 +48,7 @@ app.add_middleware(
 app.include_router(servers.router)
 app.include_router(libraries.router)
 app.include_router(posterdb_router.router)
+app.include_router(artwork.router)
 
 
 @app.get("/api/health")

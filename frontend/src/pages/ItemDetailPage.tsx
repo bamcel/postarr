@@ -1,13 +1,13 @@
 // Item detail: a cinematic hero (blurred backdrop, large poster, metadata) with
 // a seasons row, and the ThePosterDB panel docked on the right for swapping art.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Wand2, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { api, imageUrl } from "../api/client";
 import PosterCard from "../components/PosterCard";
-import PosterDBPanel from "../components/PosterDBPanel";
+import ArtworkPanel from "../components/ArtworkPanel";
 import { Spinner, EmptyState } from "../components/ui";
 
 export default function ItemDetailPage() {
@@ -25,6 +25,11 @@ export default function ItemDetailPage() {
   const item = detailQ.data;
   const backdrop = imageUrl(serverId, item?.background);
   const poster = imageUrl(serverId, item?.poster);
+
+  // Auto-run the artwork search for this title when it loads (once per item).
+  useEffect(() => {
+    if (item?.title) setPrefill({ term: item.title, nonce: Date.now() });
+  }, [item?.id, item?.title]);
 
   return (
     <div className="flex h-full">
@@ -80,18 +85,11 @@ export default function ItemDetailPage() {
 
                   <div className="mt-5 flex items-center gap-3">
                     <button
-                      onClick={() => setPrefill({ term: item.title, nonce: Date.now() })}
-                      className="flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 font-semibold text-black transition-colors hover:bg-accent-hover"
-                    >
-                      <Wand2 className="size-5" /> Find Posters
-                    </button>
-                    <button
                       onClick={() => detailQ.refetch()}
-                      className="grid size-11 place-items-center rounded-full border border-border text-muted transition-colors hover:border-white/40 hover:text-white"
-                      aria-label="Refresh"
+                      className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-white/40 hover:text-white"
                       title="Refresh from server"
                     >
-                      <RefreshCw className={`size-5 ${detailQ.isFetching ? "animate-spin" : ""}`} />
+                      <RefreshCw className={`size-4 ${detailQ.isFetching ? "animate-spin" : ""}`} /> Refresh
                     </button>
                   </div>
 
@@ -126,9 +124,9 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
-      {/* Right: ThePosterDB module (docked on md+; narrower on smaller screens) */}
+      {/* Right: artwork module (docked on md+; narrower on smaller screens) */}
       <div className="hidden h-full w-80 shrink-0 md:block xl:w-[380px]">
-        {item && <PosterDBPanel serverId={serverId} item={item} prefill={prefill} />}
+        {item && <ArtworkPanel serverId={serverId} item={item} prefill={prefill} />}
       </div>
     </div>
   );

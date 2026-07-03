@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   KeyRound,
+  Image as ImageIcon,
 } from "lucide-react";
 import { api, type ServerInput } from "../api/client";
 import { useToast } from "../lib/toast";
@@ -45,6 +46,7 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-semibold">Settings</h1>
         <ServersSection />
         <PosterDBSection />
+        <ArtworkSourcesSection />
       </div>
     </div>
   );
@@ -356,13 +358,114 @@ function PosterDBSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Artwork sources (Fanart.tv / TheTVDB API keys)
+// ---------------------------------------------------------------------------
+
+function ArtworkSourcesSection() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const settingsQ = useQuery({ queryKey: ["artwork-settings"], queryFn: api.getArtworkSettings });
+
+  const [fanart, setFanart] = useState("");
+  const [tvdbKey, setTvdbKey] = useState("");
+  const [tvdbPin, setTvdbPin] = useState("");
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      api.setArtworkSettings({ fanart_api_key: fanart, tvdb_api_key: tvdbKey, tvdb_pin: tvdbPin }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["artwork-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["artwork-providers"] });
+      setFanart("");
+      setTvdbKey("");
+      toast.push("success", "Artwork source keys saved.");
+    },
+    onError: (e: Error) => toast.push("error", e.message),
+  });
+
+  const cfg = settingsQ.data;
+
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-6">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
+        <ImageIcon className="size-5 text-accent" /> Artwork sources
+      </h2>
+      <p className="mb-5 text-sm text-faint">
+        Optional extra databases for posters, backgrounds, banners, and logos. AniList needs no key.
+      </p>
+
+      <div className="space-y-4">
+        <Field
+          label={
+            <>
+              Fanart.tv API key{" "}
+              {cfg?.fanart_configured && <ConfiguredTag />}{" "}
+              <a href="https://fanart.tv/get-an-api-key/" target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-white">
+                (get a free key ↗)
+              </a>
+            </>
+          }
+        >
+          <input
+            className={inputCls}
+            type="password"
+            value={fanart}
+            onChange={(e) => setFanart(e.target.value)}
+            placeholder={cfg?.fanart_configured ? "•••••• (leave blank to keep)" : "your Fanart.tv personal API key"}
+          />
+        </Field>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label={<>TheTVDB API key {cfg?.tvdb_configured && <ConfiguredTag />}</>}>
+            <input
+              className={inputCls}
+              type="password"
+              value={tvdbKey}
+              onChange={(e) => setTvdbKey(e.target.value)}
+              placeholder={cfg?.tvdb_configured ? "•••••• (leave blank to keep)" : "TheTVDB v4 API key"}
+            />
+          </Field>
+          <Field label="TheTVDB subscriber PIN (optional)">
+            <input
+              className={inputCls}
+              value={tvdbPin}
+              onChange={(e) => setTvdbPin(e.target.value)}
+              placeholder="only for user-supported keys"
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <button
+          onClick={() => saveMut.mutate()}
+          disabled={saveMut.isPending || (!fanart && !tvdbKey && !tvdbPin)}
+          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-accent-hover disabled:opacity-50"
+        >
+          {saveMut.isPending && <Loader2 className="size-4 animate-spin" />}
+          Save
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ConfiguredTag() {
+  return (
+    <span className="ml-1 inline-flex items-center gap-1 text-xs text-accent">
+      <CheckCircle2 className="size-3" /> set
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Small form helpers
 // ---------------------------------------------------------------------------
 
 const inputCls =
   "w-full rounded-lg border border-border bg-base px-3 py-2 text-sm outline-none focus:border-accent";
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-muted">{label}</span>

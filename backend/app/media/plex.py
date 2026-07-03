@@ -103,7 +103,20 @@ class PlexClient(MediaClient):
             summary=meta.get("summary"),
             season_count=meta.get("childCount") if kind == "show" else None,
             seasons=seasons,
+            external_ids=self._external_ids(meta),
         )
+
+    @staticmethod
+    def _external_ids(meta: dict) -> dict[str, str]:
+        """Parse Plex's Guid array (e.g. ``tmdb://603``) into {scheme: id}."""
+        ids: dict[str, str] = {}
+        for g in meta.get("Guid", []):
+            raw = g.get("id", "")
+            if "://" in raw:
+                scheme, _, value = raw.partition("://")
+                if value:
+                    ids[scheme.lower()] = value
+        return ids
 
     async def set_image(self, item_id: str, target: str, data: bytes, content_type: str) -> None:
         endpoint = "posters" if target == "poster" else "arts"
