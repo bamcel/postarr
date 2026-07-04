@@ -10,8 +10,8 @@
 // Thumbnails are proxied through our backend (/api/posterdb/image), so they load
 // without a TPDb session in the browser.
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type FormEvent } from "react";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   ExternalLink,
@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { api } from "../api/client";
 import { useToast } from "../lib/toast";
-import type { ItemDetail, PosterAsset, PosterSearchResults, PosterSet } from "../types";
+import type { ItemDetail, PosterAsset, PosterCategory, PosterSearchResults, PosterSet } from "../types";
 
 const TPDB = "https://theposterdb.com";
 const looksLikeRef = (s: string) => /^\d+$/.test(s.trim()) || /https?:\/\//.test(s);
@@ -260,50 +260,67 @@ function SearchResults({
   const cats = search.categories.filter((c) => c.count > 0 || c.results.length > 0);
   const active = cats.find((c) => c.name === activeCat) ?? cats[0];
 
-  // Search results come from TMDB and include titles nobody uploaded posters
-  // for. Verify the active category's titles (cached) and hide the empty ones.
-  const ids = useMemo(() => (active?.results ?? []).map((r) => r.media_id), [active]);
-  const verifyQ = useQuery({
-    queryKey: ["posterdb-verify", ids],
-    queryFn: () => api.posterdbVerify(ids),
-    enabled: ids.length > 0,
-    staleTime: 5 * 60_000,
+  // Search results come from TMDB and include titles nobody uploaded posters for.
+  // Verify EVERY category's titles (cached) so each tab's badge reflects the real
+  // number of titles that have posters — and hide the empty ones from the list.
+  const verifies = useQueries({
+    queries: cats.map((c) => {
+      const ids = c.results.map((r) => r.media_id);
+      return {
+        queryKey: ["posterdb-verify", ids],
+        queryFn: () => api.posterdbVerify(ids),
+        enabled: ids.length > 0,
+        staleTime: 5 * 60_000,
+      };
+    }),
   });
-  const counts = verifyQ.data;
-  const shown = (active?.results ?? []).filter(
-    (r) => !counts || (counts[r.media_id] ?? -1) !== 0,
-  );
+  const verifyByName = new Map(cats.map((c, i) => [c.name, verifies[i]]));
+  const filteredCount = (c: PosterCategory) => {
+    const counts = verifyByName.get(c.name)?.data;
+    return counts
+      ? c.results.filter((r) => (counts[r.media_id] ?? -1) !== 0).length
+      : c.results.length;
+  };
 
   if (cats.length === 0) {
     return <p className="py-6 text-sm text-faint">No movies, shows, or collections matched.</p>;
   }
 
+  const activeVerify = active ? verifyByName.get(active.name) : undefined;
+  const activeCounts = activeVerify?.data;
+  const shown = (active?.results ?? []).filter(
+    (r) => !activeCounts || (activeCounts[r.media_id] ?? -1) !== 0,
+  );
+
   return (
     <div>
       <div className="mb-3 flex gap-1">
-        {cats.map((c) => (
-          <button
-            key={c.name}
-            onClick={() => setActiveCat(c.name)}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              active?.name === c.name ? "bg-accent text-black" : "bg-surface-2 text-muted hover:text-white"
-            }`}
-          >
-            {c.name}
-            <span
-              className={`rounded-full px-1.5 text-[10px] ${
-                active?.name === c.name ? "bg-black/20" : "bg-black/30 text-faint"
+        {cats.map((c) => {
+          const v = verifyByName.get(c.name);
+          return (
+            <button
+              key={c.name}
+              onClick={() => setActiveCat(c.name)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                active?.name === c.name ? "bg-accent text-black" : "bg-surface-2 text-muted hover:text-white"
               }`}
             >
-              {c.count}
-            </span>
-          </button>
-        ))}
+              {c.name}
+              <span
+                className={`flex min-w-4 items-center justify-center rounded-full px-1.5 text-[10px] ${
+                  active?.name === c.name ? "bg-black/20" : "bg-black/30 text-faint"
+                }`}
+              >
+                {v?.isLoading ? <Loader2 className="size-2.5 animate-spin" /> : filteredCount(c)}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {active && active.results.length === 0 ? (
         <p className="py-4 text-sm text-faint">No {active.name.toLowerCase()} on this page.</p>
-      ) : verifyQ.isLoading ? (
+      ) : activeVerify?.isLoading ? (
         <div className="flex items-center gap-2 py-6 text-sm text-faint">
           <Loader2 className="size-4 animate-spin" /> Finding titles with posters…
         </div>
@@ -312,7 +329,7 @@ function SearchResults({
       ) : (
         <ul className="space-y-1">
           {shown.map((r) => {
-            const n = counts?.[r.media_id];
+            const n = activeCounts?.[r.media_id];
             return (
               <li key={r.url} className="flex items-center gap-1">
                 <button
