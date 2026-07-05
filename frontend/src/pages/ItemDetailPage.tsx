@@ -36,18 +36,17 @@ export default function ItemDetailPage() {
     <div className="flex h-full">
       {/* Left: hero + seasons */}
       <div className="relative h-full flex-1 overflow-y-auto">
-        {/* Backdrop: a vivid, mostly-undimmed image (no CSS blur) covering the
-            whole hero, like a real media-server detail page. It's pinned
-            outside the scroll flow so it stays in place while content scrolls
-            over it. Darkening is concentrated on the left (behind the poster
-            and title/logo, the text that sits directly on the image) and a
-            gentle fade at the bottom (behind the seasons row); a text-shadow
-            on the metadata (below) backs up legibility regardless of exactly
-            how bright a given image is. */}
+        {/* Backdrop: covers the whole hero (no CSS blur, so it stays crisp),
+            pinned outside the scroll flow so it stays in place while content
+            scrolls over it. A uniform dark wash dims the whole image (matching
+            a real media-server detail page), with extra darkening on the left
+            (behind the poster/title/logo) and at the bottom (behind the
+            seasons row) where text needs the most contrast. */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {backdrop && <img src={backdrop} alt="" className="h-full w-full object-cover" />}
-          <div className="absolute inset-0 bg-gradient-to-r from-base/90 via-base/40 via-45% to-transparent to-85%" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-55% to-base/80" />
+          <div className="absolute inset-0 bg-black/55" />
+          <div className="absolute inset-0 bg-gradient-to-r from-base/95 via-base/60 via-50% to-transparent to-90%" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-50% to-base/85" />
         </div>
 
         {/* Back button */}
@@ -92,7 +91,7 @@ export default function ItemDetailPage() {
                   ) : (
                     <h1 className="text-3xl font-bold leading-tight sm:text-4xl">{item.title}</h1>
                   )}
-                  <p className="mt-2 text-sm text-muted">
+                  <p className="mt-2 text-sm text-white/70">
                     {item.type === "show"
                       ? `${item.season_count ?? item.seasons.length} Season${
                           (item.season_count ?? item.seasons.length) === 1 ? "" : "s"
@@ -111,7 +110,7 @@ export default function ItemDetailPage() {
                   </div>
 
                   {item.summary && (
-                    <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted">
+                    <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/80">
                       {item.summary}
                     </p>
                   )}
