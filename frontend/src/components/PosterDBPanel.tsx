@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { api } from "../api/client";
 import { useToast } from "../lib/toast";
+import CustomTargetButton from "./CustomTargetButton";
 import type { ItemDetail, PosterAsset, PosterCategory, PosterSearchResults, PosterSet } from "../types";
 
 const TPDB = "https://theposterdb.com";
@@ -492,6 +493,13 @@ function PosterGrid({
                         onClick={() => onApply(asset, "poster", item.id, `p-${asset.id}`)}
                       />
                     )}
+                    <CustomTargetButton
+                      item={item}
+                      busy={busyKey?.includes(asset.id) ?? false}
+                      onPick={(target, targetId, label) =>
+                        onApply(asset, target, targetId, `c-${asset.id}-${targetId}-${target}-${label}`)
+                      }
+                    />
                   </div>
                 </div>
               );

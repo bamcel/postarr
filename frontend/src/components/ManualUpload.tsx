@@ -7,13 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Upload, Loader2, ImageOff, Check } from "lucide-react";
 import { api } from "../api/client";
 import { useToast } from "../lib/toast";
+import { buildApplyTargets } from "../lib/targets";
 import type { ItemDetail } from "../types";
-
-interface Target {
-  label: string;
-  itemId: string;
-  target: "poster" | "background";
-}
 
 export default function ManualUpload({ serverId, item }: { serverId: number; item: ItemDetail }) {
   const toast = useToast();
@@ -23,18 +18,7 @@ export default function ManualUpload({ serverId, item }: { serverId: number; ite
   const [targetIndex, setTargetIndex] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const targets = useMemo<Target[]>(() => {
-    const base: Target[] = [
-      { label: "Poster", itemId: item.id, target: "poster" },
-      { label: "Background", itemId: item.id, target: "background" },
-    ];
-    const seasons: Target[] = item.seasons.map((s) => ({
-      label: `${s.title || `Season ${s.index}`}${s.index === 0 && !/special/i.test(s.title) ? " (Specials)" : ""} — poster`,
-      itemId: s.id,
-      target: "poster",
-    }));
-    return [...base, ...seasons];
-  }, [item]);
+  const targets = useMemo(() => buildApplyTargets(item), [item]);
 
   // Object URL for a chosen file (revoked on change).
   const [fileUrl, setFileUrl] = useState<string | null>(null);

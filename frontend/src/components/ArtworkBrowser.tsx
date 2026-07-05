@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, AlertCircle, ExternalLink, ImageOff } from "lucide-react";
 import { api } from "../api/client";
 import { useToast } from "../lib/toast";
+import CustomTargetButton from "./CustomTargetButton";
 import type { ArtworkItem, ArtworkType, ItemDetail } from "../types";
 
 const TYPE_ORDER: ArtworkType[] = ["poster", "background", "banner", "logo"];
@@ -141,7 +142,7 @@ export default function ArtworkBrowser({
                 <span className="truncate text-[11px] text-faint">
                   {[art.lang, art.likes != null ? `♥ ${art.likes}` : null].filter(Boolean).join(" · ") || " "}
                 </span>
-                <div className="flex shrink-0 gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   {art.applyable && art.type === "poster" && season ? (
                     <ApplyBtn
                       label={`→ S${art.season_number}`}
@@ -170,6 +171,15 @@ export default function ArtworkBrowser({
                     >
                       View <ExternalLink className="size-3" />
                     </a>
+                  )}
+                  {art.applyable && (
+                    <CustomTargetButton
+                      item={item}
+                      busy={busyKey?.includes(art.id) ?? false}
+                      onPick={(target, targetId, label) =>
+                        apply(art, target, targetId, `c-${art.id}-${targetId}-${target}-${label}`)
+                      }
+                    />
                   )}
                 </div>
               </div>
