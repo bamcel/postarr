@@ -8,6 +8,8 @@ newly-uploaded asset becomes the selected one automatically.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import httpx
 
 from ..schemas import ItemDetail, NormalizedItem, NormalizedLibrary, NormalizedSeason
@@ -104,7 +106,16 @@ class PlexClient(MediaClient):
             season_count=meta.get("childCount") if kind == "show" else None,
             seasons=seasons,
             external_ids=self._external_ids(meta),
+            logo=self._logo_ref(meta),
         )
+
+    @staticmethod
+    def _logo_ref(meta: dict) -> Optional[str]:
+        """Plex's clear-logo art lives in the ``Image`` array as type clearLogo."""
+        for img in meta.get("Image", []):
+            if img.get("type") == "clearLogo" and img.get("url"):
+                return img["url"].lstrip("/")
+        return None
 
     @staticmethod
     def _external_ids(meta: dict) -> dict[str, str]:

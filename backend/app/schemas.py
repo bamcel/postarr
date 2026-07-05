@@ -89,6 +89,9 @@ class ItemDetail(NormalizedItem):
     # External provider ids used to query Fanart.tv / TheTVDB, e.g.
     # {"tmdb": "603", "tvdb": "78901", "imdb": "tt0133093"}.
     external_ids: dict[str, str] = Field(default_factory=dict)
+    # The item's own clear-logo artwork (as already stored by the media server
+    # itself), if any — shown instead of a plain text title, image proxy ref.
+    logo: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

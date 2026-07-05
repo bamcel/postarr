@@ -72,7 +72,10 @@ export default function PosterCard({
         </div>
       </div>
 
-      <div className="mt-2 px-0.5">
+      {/* Text-shadow is a no-op over a solid background (library grid) but
+          keeps these legible when a card sits over the vivid backdrop image
+          on the item detail page's Seasons row. */}
+      <div className="mt-2 px-0.5 [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
         <p className="truncate text-sm font-medium text-white/90">{title}</p>
         {subtitle && <p className="truncate text-xs text-faint">{subtitle}</p>}
       </div>

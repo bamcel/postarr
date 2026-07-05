@@ -140,6 +140,7 @@ class JellyfinClient(MediaClient):
             season_count=it.get("ChildCount") if kind == "show" else None,
             seasons=seasons,
             external_ids=external_ids,
+            logo=self._image_ref(it, "Logo"),
         )
 
     async def set_image(self, item_id: str, target: str, data: bytes, content_type: str) -> None:

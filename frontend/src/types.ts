@@ -50,6 +50,7 @@ export interface ItemDetail extends MediaItem {
   season_count?: number | null;
   seasons: Season[];
   external_ids: Record<string, string>;
+  logo?: string | null;
 }
 
 // --- Artwork providers (Fanart.tv / AniList / TheTVDB) ---

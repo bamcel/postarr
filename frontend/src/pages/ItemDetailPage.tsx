@@ -25,6 +25,7 @@ export default function ItemDetailPage() {
   const item = detailQ.data;
   const backdrop = imageUrl(serverId, item?.background);
   const poster = imageUrl(serverId, item?.poster);
+  const logo = imageUrl(serverId, item?.logo);
 
   // Auto-run the artwork search for this title when it loads (once per item).
   useEffect(() => {
@@ -35,12 +36,18 @@ export default function ItemDetailPage() {
     <div className="flex h-full">
       {/* Left: hero + seasons */}
       <div className="relative h-full flex-1 overflow-y-auto">
-        {/* Blurred backdrop */}
-        <div className="absolute inset-x-0 top-0 h-[420px] overflow-hidden">
-          {backdrop && (
-            <img src={backdrop} alt="" className="h-full w-full scale-105 object-cover blur-sm" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-b from-base/40 via-base/70 to-base" />
+        {/* Backdrop: a vivid, mostly-undimmed image (no CSS blur) covering the
+            whole hero, like a real media-server detail page. It's pinned
+            outside the scroll flow so it stays in place while content scrolls
+            over it. Darkening is concentrated on the left (behind the poster
+            and title/logo, the text that sits directly on the image) and a
+            gentle fade at the bottom (behind the seasons row); a text-shadow
+            on the metadata (below) backs up legibility regardless of exactly
+            how bright a given image is. */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {backdrop && <img src={backdrop} alt="" className="h-full w-full object-cover" />}
+          <div className="absolute inset-0 bg-gradient-to-r from-base/90 via-base/40 via-45% to-transparent to-85%" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-55% to-base/80" />
         </div>
 
         {/* Back button */}
@@ -72,9 +79,19 @@ export default function ItemDetailPage() {
                   </div>
                 </div>
 
-                {/* Metadata */}
-                <div className="min-w-0 flex-1 pt-2">
-                  <h1 className="text-3xl font-bold leading-tight sm:text-4xl">{item.title}</h1>
+                {/* Metadata — a text-shadow (not just the gradient) keeps this
+                    legible over a vivid/bright backdrop image, since the exact
+                    gradient fade point can't account for every image. */}
+                <div className="min-w-0 flex-1 pt-2 [text-shadow:0_2px_12px_rgba(0,0,0,0.8)]">
+                  {logo ? (
+                    <img
+                      src={logo}
+                      alt={item.title}
+                      className="max-h-24 max-w-full object-contain object-left drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)] sm:max-h-28"
+                    />
+                  ) : (
+                    <h1 className="text-3xl font-bold leading-tight sm:text-4xl">{item.title}</h1>
+                  )}
                   <p className="mt-2 text-sm text-muted">
                     {item.type === "show"
                       ? `${item.season_count ?? item.seasons.length} Season${
