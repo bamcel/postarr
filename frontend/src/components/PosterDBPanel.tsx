@@ -216,7 +216,7 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
           onAuto={() => autoApply(current.set.posters)}
           onApply={apply}
           onOpenSet={(asset) =>
-            openGrid(`${TPDB}/poster/${asset.id}`, { label: asset.title })
+            openGrid(asset.set_url ?? `${TPDB}/poster/${asset.id}`, { label: asset.title })
           }
           seasonByNumber={seasonByNumber}
         />
@@ -456,6 +456,7 @@ function PosterGrid({
                       />
                       <span className="absolute inset-0 hidden items-center justify-center gap-1 bg-black/55 text-xs font-semibold text-white group-hover/th:flex">
                         <Layers className="size-3.5" /> View set
+                        {asset.set_size != null && ` (${asset.set_size})`}
                       </span>
                     </button>
                   ) : (
@@ -470,7 +471,15 @@ function PosterGrid({
                     {asset.title}
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1">
-                    {asset.kind === "season" && season ? (
+                    {/* Portrait posters only apply as posters; only background-
+                        type images offer "Background" (right aspect ratio). */}
+                    {asset.kind === "background" ? (
+                      <ApplyButton
+                        label="Background"
+                        busy={busyKey === `b-${asset.id}`}
+                        onClick={() => onApply(asset, "background", item.id, `b-${asset.id}`)}
+                      />
+                    ) : asset.kind === "season" && season ? (
                       <ApplyButton
                         label={`→ Season ${asset.season_number}`}
                         busy={busyKey === `s-${asset.id}`}
@@ -483,12 +492,6 @@ function PosterGrid({
                         onClick={() => onApply(asset, "poster", item.id, `p-${asset.id}`)}
                       />
                     )}
-                    <ApplyButton
-                      label="BG"
-                      subtle
-                      busy={busyKey === `b-${asset.id}`}
-                      onClick={() => onApply(asset, "background", item.id, `b-${asset.id}`)}
-                    />
                   </div>
                 </div>
               );

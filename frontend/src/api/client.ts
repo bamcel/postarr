@@ -116,4 +116,29 @@ export const api = {
     request<ArtworkResults>(
       `/artwork?provider=${provider}&server_id=${serverId}&item_id=${encodeURIComponent(itemId)}`,
     ),
+
+  // Manual image upload (multipart — let the browser set the boundary).
+  applyUpload: async (data: {
+    server_id: number;
+    item_id: string;
+    target: "poster" | "background";
+    file: File;
+  }): Promise<ApplyResult> => {
+    const fd = new FormData();
+    fd.append("server_id", String(data.server_id));
+    fd.append("item_id", data.item_id);
+    fd.append("target", data.target);
+    fd.append("file", data.file);
+    const res = await fetch("/api/artwork/upload", { method: "POST", body: fd });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        detail = (await res.json()).detail ?? detail;
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+    }
+    return res.json();
+  },
 };

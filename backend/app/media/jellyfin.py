@@ -144,13 +144,24 @@ class JellyfinClient(MediaClient):
 
     async def set_image(self, item_id: str, target: str, data: bytes, content_type: str) -> None:
         image_type = _IMAGE_TARGET.get(target, "Primary")
-        url = f"{self.base_url}/Items/{item_id}/Images/{image_type}"
         body = base64.b64encode(data)  # Jellyfin/Emby require a base64 text body.
+        auth = {"X-Emby-Token": self.token}
         async with self._client() as client:
+            # Backdrops are a LIST and POST appends a new one — so replacing the
+            # background wouldn't change the displayed image (index 0). Clear the
+            # existing backdrops first so the uploaded image becomes the only one.
+            if image_type == "Backdrop":
+                for _ in range(25):
+                    d = await client.delete(
+                        f"{self.base_url}/Items/{item_id}/Images/Backdrop/0", headers=auth
+                    )
+                    if d.status_code not in (200, 204):
+                        break
+
             resp = await client.post(
-                url,
+                f"{self.base_url}/Items/{item_id}/Images/{image_type}",
                 content=body,
-                headers={"X-Emby-Token": self.token, "Content-Type": content_type},
+                headers={**auth, "Content-Type": content_type},
             )
             if resp.status_code == 401:
                 raise MediaError(f"{self.server_label} rejected the API key while uploading.")

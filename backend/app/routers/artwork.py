@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from .. import db
 from ..artwork import get_provider, provider_infos
 from ..artwork.base import ArtworkError
 from ..media.base import MediaError
 from ..media.factory import client_for
-from ..schemas import ArtworkProviderInfo, ArtworkResults, ArtworkSettings, ArtworkSettingsUpdate
+from ..schemas import (
+    ApplyResult,
+    ArtworkProviderInfo,
+    ArtworkResults,
+    ArtworkSettings,
+    ArtworkSettingsUpdate,
+    ImageTarget,
+)
 
 router = APIRouter(prefix="/api/artwork", tags=["artwork"])
 
@@ -64,3 +71,32 @@ async def get_artwork(
         # A friendly message (e.g. missing id / key) rather than a hard error.
         return ArtworkResults(provider=provider, item_title=item.title, items=[], message=str(exc))
     return ArtworkResults(provider=provider, item_title=item.title, items=items)
+
+
+@router.post("/upload", response_model=ApplyResult)
+async def upload_image(
+    server_id: int = Form(...),
+    item_id: str = Form(..., description="show/movie id, or a season id"),
+    target: ImageTarget = Form("poster"),
+    file: UploadFile = File(...),
+) -> ApplyResult:
+    """Apply a user-supplied image file as an item's poster/background.
+
+    ``item_id`` may be a season's id (with target=poster) to set season artwork.
+    """
+    server = db.get_server(server_id, include_token=True)
+    if server is None:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+    content_type = file.content_type or "image/jpeg"
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="That file isn't an image.")
+
+    try:
+        await client_for(server).set_image(item_id, target, data, content_type)
+    except MediaError as exc:
+        return ApplyResult(ok=False, message=f"Upload failed: {exc}")
+    return ApplyResult(ok=True, message="Applied your image successfully.")

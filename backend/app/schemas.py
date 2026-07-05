@@ -168,6 +168,10 @@ class PosterAsset(BaseModel):
     thumb_url: str           # full-res / preview URL on ThePosterDB
     download_url: str        # URL the backend uses to fetch the bytes
     source_url: Optional[str] = None  # the poster/set page it came from
+    # Only on title-page cards: how many posters are in this cover's set, and the
+    # direct set URL to open it.
+    set_size: Optional[int] = None
+    set_url: Optional[str] = None
 
 
 class PosterSet(BaseModel):

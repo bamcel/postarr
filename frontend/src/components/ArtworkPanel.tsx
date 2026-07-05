@@ -10,6 +10,7 @@ import { api } from "../api/client";
 import type { ItemDetail } from "../types";
 import PosterDBBody from "./PosterDBPanel";
 import ArtworkBrowser from "./ArtworkBrowser";
+import ManualUpload from "./ManualUpload";
 
 interface Props {
   serverId: number;
@@ -21,10 +22,11 @@ export default function ArtworkPanel({ serverId, item, prefill }: Props) {
   const [provider, setProvider] = useState("posterdb");
   const providersQ = useQuery({ queryKey: ["artwork-providers"], queryFn: api.artworkProviders });
 
-  // ThePosterDB is always first; the API providers come from the backend.
+  // ThePosterDB first, the API providers from the backend, then Manual upload.
   const tabs = [
     { name: "posterdb", label: "ThePosterDB", configured: true, needs_key: false },
     ...(providersQ.data ?? []),
+    { name: "manual", label: "Manual", configured: true, needs_key: false },
   ];
 
   return (
@@ -55,6 +57,8 @@ export default function ArtworkPanel({ serverId, item, prefill }: Props) {
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {provider === "posterdb" ? (
           <PosterDBBody serverId={serverId} item={item} prefill={prefill} />
+        ) : provider === "manual" ? (
+          <ManualUpload serverId={serverId} item={item} />
         ) : (
           <ArtworkBrowser provider={provider} serverId={serverId} item={item} />
         )}

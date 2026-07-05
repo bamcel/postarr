@@ -107,6 +107,8 @@ export interface PosterAsset {
   thumb_url: string;
   download_url: string;
   source_url?: string | null;
+  set_size?: number | null;
+  set_url?: string | null;
 }
 
 export interface PosterSet {

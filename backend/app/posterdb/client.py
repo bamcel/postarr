@@ -481,6 +481,19 @@ class PosterDBClient:
         kind, season = _classify(media_type, title)
         # Prefer TPDb's small optimized webp thumbnail; fall back to full-res.
         thumb = self._extract_thumb(card) or _asset_url(poster_id)
+
+        # On title-page cards, a badge gives the set's poster count + set URL.
+        set_size: Optional[int] = None
+        set_url: Optional[str] = None
+        badge = card.select_one("a.set_poster_count")
+        if badge:
+            text = badge.get_text(strip=True)
+            if text.isdigit():
+                set_size = int(text)
+            href = badge.get("href")
+            if href:
+                set_url = href if href.startswith("http") else f"{POSTERDB_BASE_URL}{href}"
+
         return PosterAsset(
             id=str(poster_id),
             title=title,
@@ -489,6 +502,8 @@ class PosterDBClient:
             thumb_url=_proxy_thumb(thumb),
             download_url=_asset_url(poster_id),
             source_url=source_url,
+            set_size=set_size,
+            set_url=set_url,
         )
 
     @staticmethod
