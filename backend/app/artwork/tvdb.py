@@ -82,10 +82,10 @@ class TVDBProvider(ArtworkProvider):
             for t in resp.json().get("data", [])
         }
 
-    async def fetch(self, item: ItemDetail) -> list[ArtworkItem]:
+    async def fetch(self, item: ItemDetail, id_override: Optional[str] = None) -> list[ArtworkItem]:
         if not self._key():
             raise ArtworkError("TheTVDB API key is not configured (add it in Settings).")
-        tvdb_id = item.external_ids.get("tvdb")
+        tvdb_id = id_override or item.external_ids.get("tvdb")
         if not tvdb_id:
             raise ArtworkError("This item has no TheTVDB id (TVDB works best for shows).")
         record = "movies" if item.type == "movie" else "series"
@@ -121,7 +121,7 @@ class TVDBProvider(ArtworkProvider):
                     likes=int(score) if str(score).isdigit() else None,
                     thumb_url=_abs(a.get("thumbnail") or a.get("image", "")),
                     download_url=url,
-                    applyable=art_type in ("poster", "background"),
+                    applyable=art_type in ("poster", "background", "logo"),
                 )
             )
         items.sort(key=lambda a: (a.type, -(a.likes or 0)))

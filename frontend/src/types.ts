@@ -1,7 +1,7 @@
 // Shapes mirror the backend Pydantic models in backend/app/schemas.py.
 
 export type ServerType = "plex" | "jellyfin" | "emby";
-export type ImageTarget = "poster" | "background";
+export type ImageTarget = "poster" | "background" | "logo";
 
 export interface Server {
   id: number;

@@ -17,7 +17,7 @@ from ..schemas import ItemDetail, NormalizedItem, NormalizedLibrary, NormalizedS
 from .base import MediaClient, MediaError
 
 _COLLECTION_TYPE = {"movies": "movie", "tvshows": "show", "homevideos": "movie"}
-_IMAGE_TARGET = {"poster": "Primary", "background": "Backdrop"}
+_IMAGE_TARGET = {"poster": "Primary", "background": "Backdrop", "logo": "Logo"}
 
 
 class JellyfinClient(MediaClient):

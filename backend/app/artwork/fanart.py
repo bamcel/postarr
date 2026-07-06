@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from ..db import get_setting
 from ..schemas import ArtworkItem, ItemDetail
 from .base import ArtworkError, ArtworkProvider
@@ -42,18 +44,18 @@ class FanartProvider(ArtworkProvider):
     def is_configured(self) -> bool:
         return bool(self._key())
 
-    async def fetch(self, item: ItemDetail) -> list[ArtworkItem]:
+    async def fetch(self, item: ItemDetail, id_override: Optional[str] = None) -> list[ArtworkItem]:
         key = self._key()
         if not key:
             raise ArtworkError("Fanart.tv API key is not configured (add it in Settings).")
 
         if item.type == "movie":
-            fid = item.external_ids.get("tmdb") or item.external_ids.get("imdb")
+            fid = id_override or item.external_ids.get("tmdb") or item.external_ids.get("imdb")
             if not fid:
                 raise ArtworkError("This movie has no TMDB/IMDb id, which Fanart.tv needs.")
             endpoint, fields, kind = f"{FANART_BASE}/movies/{fid}", _MOVIE_FIELDS, "movie"
         else:
-            fid = item.external_ids.get("tvdb")
+            fid = id_override or item.external_ids.get("tvdb")
             if not fid:
                 raise ArtworkError("This show has no TheTVDB id, which Fanart.tv needs.")
             endpoint, fields, kind = f"{FANART_BASE}/tv/{fid}", _TV_FIELDS, "show"
@@ -92,7 +94,7 @@ class FanartProvider(ArtworkProvider):
                         likes=_to_int(entry.get("likes")),
                         thumb_url=url,
                         download_url=url,
-                        applyable=art_type in ("poster", "background"),
+                        applyable=art_type in ("poster", "background", "logo"),
                     )
                 )
         # Most-liked first within each type (the UI groups by type).

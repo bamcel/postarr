@@ -7,6 +7,7 @@ import type {
   ArtworkResults,
   ArtworkSettings,
   ConnectionTest,
+  ImageTarget,
   ItemDetail,
   Library,
   MediaItem,
@@ -98,7 +99,7 @@ export const api = {
   applyPoster: (data: {
     server_id: number;
     item_id: string;
-    target: "poster" | "background";
+    target: ImageTarget;
     provider?: string;
     download_url?: string;
     asset_id?: string;
@@ -112,16 +113,17 @@ export const api = {
     tvdb_api_key?: string;
     tvdb_pin?: string;
   }) => request<ArtworkSettings>("/artwork/settings", { method: "PUT", body: JSON.stringify(data) }),
-  getArtwork: (provider: string, serverId: number, itemId: string) =>
+  getArtwork: (provider: string, serverId: number, itemId: string, idOverride?: string) =>
     request<ArtworkResults>(
-      `/artwork?provider=${provider}&server_id=${serverId}&item_id=${encodeURIComponent(itemId)}`,
+      `/artwork?provider=${provider}&server_id=${serverId}&item_id=${encodeURIComponent(itemId)}` +
+        (idOverride ? `&id_override=${encodeURIComponent(idOverride)}` : ""),
     ),
 
   // Manual image upload (multipart — let the browser set the boundary).
   applyUpload: async (data: {
     server_id: number;
     item_id: string;
-    target: "poster" | "background";
+    target: ImageTarget;
     file: File;
   }): Promise<ApplyResult> => {
     const fd = new FormData();

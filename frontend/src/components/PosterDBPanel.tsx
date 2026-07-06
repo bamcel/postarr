@@ -25,7 +25,14 @@ import {
 import { api } from "../api/client";
 import { useToast } from "../lib/toast";
 import CustomTargetButton from "./CustomTargetButton";
-import type { ItemDetail, PosterAsset, PosterCategory, PosterSearchResults, PosterSet } from "../types";
+import type {
+  ImageTarget,
+  ItemDetail,
+  PosterAsset,
+  PosterCategory,
+  PosterSearchResults,
+  PosterSet,
+} from "../types";
 
 const TPDB = "https://theposterdb.com";
 const looksLikeRef = (s: string) => /^\d+$/.test(s.trim()) || /https?:\/\//.test(s);
@@ -105,7 +112,7 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
 
   async function apply(
     asset: PosterAsset,
-    target: "poster" | "background",
+    target: ImageTarget,
     targetItemId: string,
     key: string,
   ) {
@@ -387,7 +394,7 @@ function PosterGrid({
   busyKey: string | null;
   onBack?: () => void;
   onAuto: () => void;
-  onApply: (a: PosterAsset, t: "poster" | "background", id: string, key: string) => void;
+  onApply: (a: PosterAsset, t: ImageTarget, id: string, key: string) => void;
   onOpenSet: (a: PosterAsset) => void;
   seasonByNumber: (n?: number | null) => ItemDetail["seasons"][number] | undefined;
 }) {

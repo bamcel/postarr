@@ -12,7 +12,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 ServerType = Literal["plex", "jellyfin", "emby"]
-ImageTarget = Literal["poster", "background"]
+ImageTarget = Literal["poster", "background", "logo"]
 
 
 # ---------------------------------------------------------------------------

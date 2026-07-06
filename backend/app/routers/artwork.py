@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from .. import db
@@ -51,6 +53,9 @@ async def get_artwork(
     provider: str = Query(...),
     server_id: int = Query(...),
     item_id: str = Query(...),
+    id_override: Optional[str] = Query(
+        None, description="Manually entered id (or, for AniList, a search term) overriding auto-detection"
+    ),
 ) -> ArtworkResults:
     prov = get_provider(provider)
     if prov is None:
@@ -66,7 +71,7 @@ async def get_artwork(
         raise HTTPException(status_code=502, detail=str(exc))
 
     try:
-        items = await prov.fetch(item)
+        items = await prov.fetch(item, id_override=id_override)
     except ArtworkError as exc:
         # A friendly message (e.g. missing id / key) rather than a hard error.
         return ArtworkResults(provider=provider, item_title=item.title, items=[], message=str(exc))

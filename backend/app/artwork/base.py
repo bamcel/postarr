@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+from typing import Optional
 
 import httpx
 
@@ -27,8 +28,14 @@ class ArtworkProvider(abc.ABC):
         """Whether the provider can be used (key present, etc.)."""
 
     @abc.abstractmethod
-    async def fetch(self, item: ItemDetail) -> list[ArtworkItem]:
-        """Return all artwork for ``item`` (posters/backgrounds/banners/logos)."""
+    async def fetch(self, item: ItemDetail, id_override: Optional[str] = None) -> list[ArtworkItem]:
+        """Return all artwork for ``item`` (posters/backgrounds/banners/logos).
+
+        ``id_override``, when given, replaces whatever id/title this provider
+        would normally derive from ``item`` — lets the UI search by a manually
+        entered id (or, for AniList, a manually entered search term) instead of
+        relying solely on the media server's own external_ids.
+        """
 
     # -- helpers ----------------------------------------------------------
     @staticmethod

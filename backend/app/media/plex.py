@@ -130,7 +130,9 @@ class PlexClient(MediaClient):
         return ids
 
     async def set_image(self, item_id: str, target: str, data: bytes, content_type: str) -> None:
-        endpoint = "posters" if target == "poster" else "arts"
+        # Same upload pattern for all three: posters, arts (background), and
+        # clearLogos — Plex's newer (4.17+) clear-logo endpoint.
+        endpoint = {"poster": "posters", "background": "arts", "logo": "clearLogos"}.get(target, "posters")
         url = f"{self.base_url}/library/metadata/{item_id}/{endpoint}"
         async with self._client() as client:
             resp = await client.post(

@@ -1,7 +1,8 @@
 // A small "Custom" button + popover letting you override where an image gets
 // applied — e.g. using a poster image as a Season 0 (Specials) poster instead
-// of its auto-detected placement. Lists every target: Poster, Background, and
-// each season. Appears next to the normal Poster/Season/Background button.
+// of its auto-detected placement. Lists every target: Poster, Background,
+// Logo, and each season. Appears next to the normal Poster/Season/Background
+// button.
 //
 // The popover is rendered into a portal at the document root, positioned from
 // the button's actual screen location. It can't just be an absolutely-positioned
@@ -14,7 +15,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Settings2, Loader2, ChevronDown } from "lucide-react";
 import { buildApplyTargets } from "../lib/targets";
-import type { ItemDetail } from "../types";
+import type { ImageTarget, ItemDetail } from "../types";
 
 const MENU_WIDTH = 192; // matches w-48
 
@@ -25,7 +26,7 @@ export default function CustomTargetButton({
 }: {
   item: ItemDetail;
   busy?: boolean;
-  onPick: (target: "poster" | "background", itemId: string, label: string) => void;
+  onPick: (target: ImageTarget, itemId: string, label: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
