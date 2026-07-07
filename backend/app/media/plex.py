@@ -8,6 +8,7 @@ newly-uploaded asset becomes the selected one automatically.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Optional
 
 import httpx
@@ -16,6 +17,17 @@ from ..schemas import ItemDetail, NormalizedItem, NormalizedLibrary, NormalizedS
 from .base import MediaClient, MediaError
 
 _LIBRARY_TYPE = {"movie": "movie", "show": "show"}
+# Plex collections are scoped per library section, not one global list — they're
+# aggregated across every movie/show section into one virtual library with this
+# synthetic id (see get_libraries/get_items).
+_COLLECTIONS_ID = "collections"
+
+
+def _item_type(m: dict) -> str:
+    t = m.get("type")
+    if t == "collection":
+        return "collection"
+    return "show" if t == "show" else "movie"
 
 
 class PlexClient(MediaClient):
@@ -45,35 +57,55 @@ class PlexClient(MediaClient):
     async def get_libraries(self) -> list[NormalizedLibrary]:
         async with self._client() as client:
             mc = await self._get_json(client, "/library/sections")
-        return [
-            NormalizedLibrary(
-                id=str(d["key"]),
-                title=d.get("title", "Library"),
-                type=_LIBRARY_TYPE.get(d.get("type", ""), "other"),
-            )
-            for d in mc.get("Directory", [])
-        ]
+            sections = mc.get("Directory", [])
+            libraries = [
+                NormalizedLibrary(
+                    id=str(d["key"]),
+                    title=d.get("title", "Library"),
+                    type=_LIBRARY_TYPE.get(d.get("type", ""), "other"),
+                )
+                for d in sections
+            ]
+            collections = await self._all_collections(client, sections)
+        if collections:
+            libraries.append(NormalizedLibrary(id=_COLLECTIONS_ID, title="Collections", type="collection"))
+        return libraries
 
     async def get_items(self, library_id: str) -> list[NormalizedItem]:
         async with self._client() as client:
-            mc = await self._get_json(client, f"/library/sections/{library_id}/all")
+            if library_id == _COLLECTIONS_ID:
+                sections = (await self._get_json(client, "/library/sections")).get("Directory", [])
+                metadata = await self._all_collections(client, sections)
+            else:
+                mc = await self._get_json(client, f"/library/sections/{library_id}/all")
+                metadata = mc.get("Metadata", [])
         return [
             NormalizedItem(
                 id=str(m["ratingKey"]),
                 title=m.get("title", "Untitled"),
                 year=m.get("year"),
-                type="show" if m.get("type") == "show" else "movie",
+                type=_item_type(m),
                 poster=self._ref(m.get("thumb")),
             )
-            for m in mc.get("Metadata", [])
+            for m in metadata
         ]
+
+    async def _all_collections(self, client: httpx.AsyncClient, sections: list[dict]) -> list[dict]:
+        """Fetch every collection across all movie/show sections, in parallel."""
+        movie_show = [d for d in sections if d.get("type") in _LIBRARY_TYPE]
+        results = await asyncio.gather(
+            *(self._get_json(client, f"/library/sections/{d['key']}/collections") for d in movie_show),
+            return_exceptions=True,
+        )
+        return [m for r in results if isinstance(r, dict) for m in r.get("Metadata", [])]
 
     async def get_item_detail(self, item_id: str) -> ItemDetail:
         async with self._client() as client:
             mc = await self._get_json(client, f"/library/metadata/{item_id}")
             meta = (mc.get("Metadata") or [{}])[0]
-            kind = "show" if meta.get("type") == "show" else "movie"
+            kind = _item_type(meta)
             seasons: list[NormalizedSeason] = []
+            members: list[NormalizedItem] = []
             if kind == "show":
                 cmc = await self._get_json(client, f"/library/metadata/{item_id}/children")
                 for s in cmc.get("Metadata", []):
@@ -88,6 +120,18 @@ class PlexClient(MediaClient):
                             episode_count=s.get("leafCount"),
                         )
                     )
+            elif kind == "collection":
+                cmc = await self._get_json(client, f"/library/collections/{item_id}/children")
+                members = [
+                    NormalizedItem(
+                        id=str(m["ratingKey"]),
+                        title=m.get("title", "Untitled"),
+                        year=m.get("year"),
+                        type=_item_type(m),
+                        poster=self._ref(m.get("thumb")),
+                    )
+                    for m in cmc.get("Metadata", [])
+                ]
         return ItemDetail(
             id=str(meta.get("ratingKey", item_id)),
             title=meta.get("title", "Untitled"),
@@ -100,6 +144,7 @@ class PlexClient(MediaClient):
             seasons=seasons,
             external_ids=self._external_ids(meta),
             logo=self._logo_ref(meta),
+            members=members,
         )
 
     @staticmethod

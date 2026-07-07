@@ -24,14 +24,14 @@ export interface ConnectionTest {
 export interface Library {
   id: string;
   title: string;
-  type: "movie" | "show" | "other";
+  type: "movie" | "show" | "collection" | "other";
 }
 
 export interface MediaItem {
   id: string;
   title: string;
   year?: number | null;
-  type: "movie" | "show";
+  type: "movie" | "show" | "collection";
   poster?: string | null;
   background?: string | null;
 }
@@ -50,6 +50,7 @@ export interface ItemDetail extends MediaItem {
   seasons: Season[];
   external_ids: Record<string, string>;
   logo?: string | null;
+  members: MediaItem[];
 }
 
 // --- Artwork providers (Fanart.tv / AniList / TheTVDB) ---

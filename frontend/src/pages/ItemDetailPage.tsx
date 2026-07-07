@@ -96,7 +96,9 @@ export default function ItemDetailPage() {
                       ? `${item.season_count ?? item.seasons.length} Season${
                           (item.season_count ?? item.seasons.length) === 1 ? "" : "s"
                         }`
-                      : item.year}
+                      : item.type === "collection"
+                        ? "Collection"
+                        : item.year}
                   </p>
 
                   <div className="mt-5 flex items-center gap-3">
@@ -130,6 +132,27 @@ export default function ItemDetailPage() {
                         subtitle={s.index != null ? `Season ${s.index}` : undefined}
                         kind="show"
                         badge={s.episode_count ?? undefined}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Collection members — each is a full library item with its own
+                  detail page/artwork panel, so cards navigate there rather than
+                  editing inline (unlike seasons, which have no page of their own). */}
+              {item.members.length > 0 && (
+                <section className="mt-10">
+                  <h2 className="mb-4 text-lg font-semibold">Titles in this collection</h2>
+                  <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
+                    {item.members.map((m) => (
+                      <PosterCard
+                        key={m.id}
+                        image={imageUrl(serverId, m.poster)}
+                        title={m.title}
+                        subtitle={m.year ? String(m.year) : undefined}
+                        kind={m.type}
+                        onOpen={() => navigate(`/server/${serverId}/item/${m.id}`)}
                       />
                     ))}
                   </div>

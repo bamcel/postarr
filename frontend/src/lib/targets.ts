@@ -1,8 +1,8 @@
 // Builds the list of places an image can be applied to for a given item:
-// its poster, background, logo, and each season's poster (including Season 0
-// / Specials). Shared by ManualUpload and the "Custom" placement picker so an
-// image from any source can be pointed at any target, not just its auto-
-// detected one.
+// its poster, background, logo, each season's poster (including Season 0
+// / Specials), and — for a collection — each member movie/show's poster.
+// Shared by ManualUpload and the "Custom" placement picker so an image from
+// any source can be pointed at any target, not just its auto-detected one.
 
 import type { ImageTarget, ItemDetail } from "../types";
 
@@ -25,5 +25,12 @@ export function buildApplyTargets(item: ItemDetail): ApplyTarget[] {
     itemId: s.id,
     target: "poster",
   }));
-  return [...base, ...seasons];
+  // Collection members: applying to one of these doesn't leave the collection
+  // page or reset the artwork search, unlike navigating into the title itself.
+  const members: ApplyTarget[] = item.members.map((m) => ({
+    label: `${m.title}${m.year ? ` (${m.year})` : ""} — poster`,
+    itemId: m.id,
+    target: "poster",
+  }));
+  return [...base, ...seasons, ...members];
 }

@@ -61,14 +61,14 @@ class ConnectionTest(BaseModel):
 class NormalizedLibrary(BaseModel):
     id: str
     title: str
-    type: Literal["movie", "show", "other"]
+    type: Literal["movie", "show", "collection", "other"]
 
 
 class NormalizedItem(BaseModel):
     id: str
     title: str
     year: Optional[int] = None
-    type: Literal["movie", "show"]
+    type: Literal["movie", "show", "collection"]
     poster: Optional[str] = None      # image proxy ref
     # Only populated on item DETAIL (the library grid never shows backdrops).
     background: Optional[str] = None  # image proxy ref
@@ -92,6 +92,9 @@ class ItemDetail(NormalizedItem):
     # The item's own clear-logo artwork (as already stored by the media server
     # itself), if any — shown instead of a plain text title, image proxy ref.
     logo: Optional[str] = None
+    # Only populated when type == "collection": its member movies/shows, each
+    # a full library item you can drill into and edit like any other title.
+    members: list[NormalizedItem] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

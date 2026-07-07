@@ -18,6 +18,16 @@ from .base import MediaClient, MediaError
 
 _COLLECTION_TYPE = {"movies": "movie", "tvshows": "show", "homevideos": "movie"}
 _IMAGE_TARGET = {"poster": "Primary", "background": "Backdrop", "logo": "Logo"}
+# BoxSets (collections) aren't scoped to a single library folder, so they're
+# exposed as one virtual library with this synthetic id (see get_libraries).
+_COLLECTIONS_ID = "collections"
+
+
+def _item_type(it: dict) -> str:
+    t = it.get("Type")
+    if t == "BoxSet":
+        return "collection"
+    return "show" if t == "Series" else "movie"
 
 
 class JellyfinClient(MediaClient):
@@ -60,26 +70,40 @@ class JellyfinClient(MediaClient):
     async def get_libraries(self) -> list[NormalizedLibrary]:
         async with self._client() as client:
             data = await self._get_json(client, "/Library/MediaFolders")
-        return [
-            NormalizedLibrary(
-                id=it["Id"],
-                title=it.get("Name", "Library"),
-                type=_COLLECTION_TYPE.get(it.get("CollectionType", ""), "other"),
+            libraries = [
+                NormalizedLibrary(
+                    id=it["Id"],
+                    title=it.get("Name", "Library"),
+                    type=_COLLECTION_TYPE.get(it.get("CollectionType", ""), "other"),
+                )
+                for it in data.get("Items", [])
+            ]
+            # BoxSets (collections) aren't tied to a single library folder, so
+            # they're exposed as one virtual "Collections" entry — only if the
+            # server actually has any (Limit=1 just to read TotalRecordCount).
+            uid = await self._get_user_id(client)
+            boxsets = await self._get_json(
+                client,
+                "/Items",
+                {"IncludeItemTypes": "BoxSet", "Recursive": "true", "Limit": 1, "userId": uid},
             )
-            for it in data.get("Items", [])
-        ]
+        if boxsets.get("TotalRecordCount", 0) > 0:
+            libraries.append(NormalizedLibrary(id=_COLLECTIONS_ID, title="Collections", type="collection"))
+        return libraries
 
     async def get_items(self, library_id: str) -> list[NormalizedItem]:
+        is_collections = library_id == _COLLECTIONS_ID
         params = {
-            "ParentId": library_id,
             "Recursive": "true",
-            "IncludeItemTypes": "Movie,Series",
+            "IncludeItemTypes": "BoxSet" if is_collections else "Movie,Series",
             "Fields": "ProductionYear",
             "SortBy": "SortName",
             "SortOrder": "Ascending",
             "ImageTypeLimit": "1",
             "EnableImageTypes": "Primary",
         }
+        if not is_collections:
+            params["ParentId"] = library_id
         async with self._client() as client:
             params["userId"] = await self._get_user_id(client)
             data = await self._get_json(client, "/Items", params)
@@ -88,7 +112,7 @@ class JellyfinClient(MediaClient):
                 id=it["Id"],
                 title=it.get("Name", "Untitled"),
                 year=it.get("ProductionYear"),
-                type="show" if it.get("Type") == "Series" else "movie",
+                type=_item_type(it),
                 poster=self._image_ref(it, "Primary"),
             )
             for it in data.get("Items", [])
@@ -100,14 +124,22 @@ class JellyfinClient(MediaClient):
             data = await self._get_json(
                 client,
                 "/Items",
-                {"Ids": item_id, "userId": uid, "Fields": "Overview,ChildCount,ProductionYear,ProviderIds"},
+                {
+                    "Ids": item_id,
+                    "userId": uid,
+                    # Emby's Ids lookup silently returns nothing for a BoxSet
+                    # unless it's explicitly allow-listed here alongside the
+                    # regular types.
+                    "IncludeItemTypes": "Movie,Series,BoxSet",
+                    "Fields": "Overview,ChildCount,ProductionYear,ProviderIds",
+                },
             )
             items = data.get("Items", [])
             if not items:
                 raise MediaError("Item not found.")
             it = items[0]
             external_ids = {k.lower(): str(v) for k, v in (it.get("ProviderIds") or {}).items() if v}
-            kind = "show" if it.get("Type") == "Series" else "movie"
+            kind = _item_type(it)
             seasons: list[NormalizedSeason] = []
             if kind == "show":
                 sdata = await self._get_json(client, f"/Shows/{item_id}/Seasons", {"userId": uid})
@@ -121,6 +153,34 @@ class JellyfinClient(MediaClient):
                             episode_count=s.get("ChildCount"),
                         )
                     )
+            members: list[NormalizedItem] = []
+            if kind == "collection":
+                # A BoxSet's direct children are its member movies/shows — no
+                # Recursive here, or Emby descends into shows' own episodes too.
+                mdata = await self._get_json(
+                    client,
+                    "/Items",
+                    {
+                        "ParentId": item_id,
+                        "IncludeItemTypes": "Movie,Series",
+                        "Fields": "ProductionYear",
+                        "SortBy": "SortName",
+                        "SortOrder": "Ascending",
+                        "ImageTypeLimit": "1",
+                        "EnableImageTypes": "Primary",
+                        "userId": uid,
+                    },
+                )
+                members = [
+                    NormalizedItem(
+                        id=m["Id"],
+                        title=m.get("Name", "Untitled"),
+                        year=m.get("ProductionYear"),
+                        type=_item_type(m),
+                        poster=self._image_ref(m, "Primary"),
+                    )
+                    for m in mdata.get("Items", [])
+                ]
         return ItemDetail(
             id=it["Id"],
             title=it.get("Name", "Untitled"),
@@ -133,6 +193,7 @@ class JellyfinClient(MediaClient):
             seasons=seasons,
             external_ids=external_ids,
             logo=self._image_ref(it, "Logo"),
+            members=members,
         )
 
     async def set_image(self, item_id: str, target: str, data: bytes, content_type: str) -> None:
