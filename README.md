@@ -1,9 +1,11 @@
 # Postarr
 
-**Postarr** is a self-hosted, open-source tool for browsing your Plex / Jellyfin / Emby
-libraries and swapping in artwork from [ThePosterDB](https://theposterdb.com). Search a
-title, pull its poster set, and replace the show/movie poster, season posters, or background
-with a click — or auto-apply a whole set onto a series and its seasons at once.
+**Postarr** is a self-hosted, open-source artwork manager for **Plex / Jellyfin / Emby**
+libraries. Browse your servers, then swap in posters, backgrounds, and logos from
+[ThePosterDB](https://theposterdb.com), [Fanart.tv](https://fanart.tv),
+[TheTVDB](https://thetvdb.com), and [AniList](https://anilist.co) — per image, per season
+(including Season 0 / Specials), or a whole ThePosterDB set onto a series and all its
+seasons at once.
 
 ![Postarr](docs/screenshot.png)
 
@@ -14,23 +16,40 @@ with a click — or auto-apply a whole set onto a series and its seasons at once
 
 ---
 
+## Features
+
+- **Four artwork sources** behind one panel: ThePosterDB (search → title → set drill-down,
+  with per-set poster counts and empty results auto-hidden), plus Fanart.tv, TheTVDB, and
+  AniList looked up automatically by your items' TMDB/TVDB/IMDb/AniList ids.
+- **Apply anywhere**: set any image as the poster, background, or clear logo — or use
+  **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season.
+- **Auto-apply set**: map an entire ThePosterDB set onto a show and its matching seasons in
+  one click.
+- **Manual tab**: upload your own image file (or paste an image URL) and apply it to any
+  target.
+- **ID override**: each provider tab has a search box pre-filled from the item's known ids;
+  type a different id (or, for AniList, a title) to fix a bad match on the spot.
+- **Clear-logo detail pages**: the item view shows the server's stored logo art over a
+  full-bleed backdrop, like a native media-server detail page.
+
 ## Architecture
 
 A small FastAPI backend serves a React single-page app and brokers all calls to your media
-servers and ThePosterDB:
+servers and the artwork sources:
 
 ```
 frontend/  React + Vite + TypeScript + Tailwind v4   (the UI)
 backend/   FastAPI + SQLite                            (API, scraping, server clients)
            app/media/      Plex / Jellyfin / Emby clients behind one interface
            app/posterdb/   ThePosterDB login + scraping
+           app/artwork/    Fanart.tv / TheTVDB / AniList providers
            app/routers/    REST endpoints
            data/           SQLite db + encryption key (git-ignored)
 ```
 
 - **Credentials are encrypted at rest** (Fernet) and never echoed back to the browser.
-- **Images are proxied** through the backend, so origin tokens stay server-side and there's
-  no CORS to fight.
+- **Images are proxied** through the backend, so origin tokens and the ThePosterDB session
+  stay server-side and there's no CORS to fight.
 - All three media servers are normalized to the same shapes, so the UI never branches on
   server type.
 
@@ -113,14 +132,23 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
    - **Jellyfin / Emby API key**: Dashboard → *API Keys* → add one.
    - Use **Test connection** to confirm before saving.
 3. **Add your ThePosterDB account** (email + password) and hit **Test login**.
+4. *(Optional)* Under **Artwork sources**, add a free
+   [Fanart.tv personal API key](https://fanart.tv/get-an-api-key/) and/or a
+   [TheTVDB v4 API key](https://thetvdb.com/api-information) to enable those tabs.
+   AniList needs no key.
 
 ## Using it
 
-1. Pick a server (sidebar) and a **library** (tabs).
-2. **Double-click** a poster to open the title.
-3. In the **ThePosterDB panel** on the right, search the title (or paste a set/poster URL).
-4. Apply any poster as the **Poster** or **BG**, send season posters to the matching season,
-   or hit **Auto-apply set** to do the whole set at once.
+1. Pick a server (sidebar) and a **library** (tabs), then **click** a title to open it —
+   the artwork panel searches for it automatically.
+2. **ThePosterDB tab**: pick a title from the categorized results (Movies / Shows /
+   Collections, with counts), hover a cover and **View set (N)** to see the full set, then
+   apply single images or **Auto-apply set**.
+3. **Fanart.tv / TheTVDB / AniList tabs**: artwork loads by the item's ids, grouped into
+   Posters / Backgrounds / Banners / Logos. Wrong match? Type the right id in the search box.
+4. **Manual tab**: upload a file or paste an image URL, choose the target, apply.
+5. On any image, **Custom** lets you choose exactly where it lands — poster, background,
+   logo, or a specific season.
 
 ## API
 
@@ -132,12 +160,17 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | `POST` | `/api/servers/{id}/test` | test a saved connection |
 | `GET` | `/api/servers/{id}/libraries` | list libraries |
 | `GET` | `/api/servers/{id}/libraries/{lib}/items` | list titles |
-| `GET` | `/api/servers/{id}/items/{item}` | item detail + seasons |
-| `GET` | `/api/servers/{id}/image?ref=…` | auth'd image proxy |
+| `GET` | `/api/servers/{id}/items/{item}` | item detail: seasons, logo, external ids |
+| `GET` | `/api/servers/{id}/image?ref=…` | auth'd media-server image proxy |
 | `PUT` | `/api/posterdb/credentials` | save ThePosterDB login |
-| `GET` | `/api/posterdb/search?term=` | search ThePosterDB |
-| `GET` | `/api/posterdb/set?url=` | scrape a set/poster |
-| `POST` | `/api/posterdb/apply` | download + apply to a server |
+| `GET` | `/api/posterdb/search?term=` | categorized ThePosterDB search |
+| `POST` | `/api/posterdb/verify` | poster counts per title (hides empty results) |
+| `GET` | `/api/posterdb/set?url=` | scrape a set / poster / title page |
+| `GET` | `/api/posterdb/image?url=` | cached ThePosterDB thumbnail proxy |
+| `POST` | `/api/posterdb/apply` | download an image + apply to a server |
+| `GET` | `/api/artwork?provider=&server_id=&item_id=[&id_override=]` | Fanart/TVDB/AniList artwork |
+| `GET/PUT` | `/api/artwork/settings` | Fanart/TVDB API keys |
+| `POST` | `/api/artwork/upload` | apply a user-uploaded image file |
 
 ## License
 

@@ -13,6 +13,8 @@ import {
   XCircle,
   KeyRound,
   Image as ImageIcon,
+  Server as ServerIcon,
+  Database,
 } from "lucide-react";
 import { api, type ServerInput } from "../api/client";
 import { useToast } from "../lib/toast";
@@ -21,7 +23,7 @@ import type { ConnectionTest, Server, ServerType } from "../types";
 
 const BLANK: ServerInput = {
   name: "",
-  type: "jellyfin",
+  type: "emby",
   base_url: "",
   token: "",
   is_default: false,
@@ -39,14 +41,40 @@ const TOKEN_LABEL: Record<ServerType, string> = {
   emby: "API key",
 };
 
+type SettingsTab = "servers" | "database";
+
+const TABS: { id: SettingsTab; label: string; icon: ReactNode }[] = [
+  { id: "servers", label: "Server Setup", icon: <ServerIcon className="size-4" /> },
+  { id: "database", label: "Database Connection", icon: <Database className="size-4" /> },
+];
+
 export default function SettingsPage() {
+  const [tab, setTab] = useState<SettingsTab>("servers");
+
   return (
     <div className="h-full overflow-y-auto px-8 py-8">
-      <div className="mx-auto max-w-3xl space-y-8">
+      <div className="mx-auto max-w-3xl space-y-6">
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <ServersSection />
-        <PosterDBSection />
-        <ArtworkSourcesSection />
+
+        <div className="flex flex-wrap gap-2 border-b border-border pb-3">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                tab === t.id
+                  ? "border-accent bg-surface-2 text-white"
+                  : "border-transparent text-muted hover:text-white"
+              }`}
+            >
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "servers" && <ServersSection />}
+        {tab === "database" && <ArtworkSourcesSection />}
       </div>
     </div>
   );
@@ -186,9 +214,9 @@ function ServersSection() {
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value as ServerType })}
             >
+              <option value="emby">Emby</option>
               <option value="jellyfin">Jellyfin</option>
               <option value="plex">Plex</option>
-              <option value="emby">Emby</option>
             </select>
           </Field>
           <Field label="Server URL">
@@ -264,10 +292,30 @@ function ServersSection() {
 }
 
 // ---------------------------------------------------------------------------
-// ThePosterDB credentials
+// Artwork sources — ThePosterDB login + Fanart.tv/TheTVDB API keys, grouped
+// into one card since they're all just "credentials for an artwork source".
 // ---------------------------------------------------------------------------
 
-function PosterDBSection() {
+function ArtworkSourcesSection() {
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-6">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
+        <ImageIcon className="size-5 text-accent" /> Artwork sources
+      </h2>
+      <p className="mb-5 text-sm text-faint">
+        Accounts and API keys used to search and download posters, backgrounds, banners, and logos.
+      </p>
+
+      <PosterDBFields />
+
+      <div className="mt-6 border-t border-border pt-5">
+        <FanartTvdbFields />
+      </div>
+    </section>
+  );
+}
+
+function PosterDBFields() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const statusQ = useQuery({ queryKey: ["posterdb-status"], queryFn: api.posterdbStatus });
@@ -301,14 +349,10 @@ function PosterDBSection() {
   const configured = statusQ.data?.configured;
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-6">
-      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
-        <KeyRound className="size-5 text-accent" /> ThePosterDB account
-      </h2>
-      <p className="mb-5 text-sm text-faint">
-        Required to search and download artwork. Your password is encrypted at rest and only sent to
-        theposterdb.com.
-      </p>
+    <div>
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+        <KeyRound className="size-4 text-accent" /> ThePosterDB
+      </h3>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Email / username">
@@ -353,15 +397,11 @@ function PosterDBSection() {
           </span>
         )}
       </div>
-    </section>
+    </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Artwork sources (Fanart.tv / TheTVDB API keys)
-// ---------------------------------------------------------------------------
-
-function ArtworkSourcesSection() {
+function FanartTvdbFields() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const settingsQ = useQuery({ queryKey: ["artwork-settings"], queryFn: api.getArtworkSettings });
@@ -386,13 +426,11 @@ function ArtworkSourcesSection() {
   const cfg = settingsQ.data;
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-6">
-      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
-        <ImageIcon className="size-5 text-accent" /> Artwork sources
-      </h2>
-      <p className="mb-5 text-sm text-faint">
-        Optional extra databases for posters, backgrounds, banners, and logos. AniList needs no key.
-      </p>
+    <div>
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+        <ImageIcon className="size-4 text-accent" /> Fanart.tv &amp; TheTVDB
+        <span className="text-xs font-normal text-faint">(optional — AniList needs no key)</span>
+      </h3>
 
       <div className="space-y-4">
         <Field
@@ -446,7 +484,7 @@ function ArtworkSourcesSection() {
           Save
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 

@@ -62,7 +62,6 @@ class NormalizedLibrary(BaseModel):
     id: str
     title: str
     type: Literal["movie", "show", "other"]
-    thumb: Optional[str] = None  # image proxy ref
 
 
 class NormalizedItem(BaseModel):
@@ -71,6 +70,7 @@ class NormalizedItem(BaseModel):
     year: Optional[int] = None
     type: Literal["movie", "show"]
     poster: Optional[str] = None      # image proxy ref
+    # Only populated on item DETAIL (the library grid never shows backdrops).
     background: Optional[str] = None  # image proxy ref
 
 
@@ -160,7 +160,7 @@ class PosterDBStatus(BaseModel):
     message: str = ""
 
 
-PosterKind = Literal["show", "movie", "season", "collection", "titlecard", "background", "unknown"]
+PosterKind = Literal["show", "movie", "season", "collection", "background", "unknown"]
 
 
 class PosterAsset(BaseModel):
@@ -168,9 +168,8 @@ class PosterAsset(BaseModel):
     title: str
     kind: PosterKind = "unknown"
     season_number: Optional[int] = None
-    thumb_url: str           # full-res / preview URL on ThePosterDB
+    thumb_url: str           # proxied preview URL
     download_url: str        # URL the backend uses to fetch the bytes
-    source_url: Optional[str] = None  # the poster/set page it came from
     # Only on title-page cards: how many posters are in this cover's set, and the
     # direct set URL to open it.
     set_size: Optional[int] = None
@@ -180,7 +179,6 @@ class PosterAsset(BaseModel):
 class PosterSet(BaseModel):
     set_url: str
     title: Optional[str] = None
-    author: Optional[str] = None
     posters: list[PosterAsset] = Field(default_factory=list)
 
 
@@ -217,9 +215,7 @@ class ApplyRequest(BaseModel):
     # Which source the image comes from — decides how the backend downloads it
     # ("posterdb" uses the authenticated TPDb session; others are public URLs).
     provider: str = "posterdb"
-    # Provide exactly one source:
-    download_url: Optional[str] = None  # a full image URL to fetch
-    asset_id: Optional[str] = None      # a ThePosterDB asset id (resolved to a URL)
+    download_url: str  # the full image URL to fetch
 
 
 class ApplyResult(BaseModel):

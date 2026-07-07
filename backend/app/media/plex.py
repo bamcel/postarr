@@ -45,35 +45,28 @@ class PlexClient(MediaClient):
     async def get_libraries(self) -> list[NormalizedLibrary]:
         async with self._client() as client:
             mc = await self._get_json(client, "/library/sections")
-        libs: list[NormalizedLibrary] = []
-        for d in mc.get("Directory", []):
-            libs.append(
-                NormalizedLibrary(
-                    id=str(d["key"]),
-                    title=d.get("title", "Library"),
-                    type=_LIBRARY_TYPE.get(d.get("type", ""), "other"),
-                    thumb=self._ref(d.get("thumb")),
-                )
+        return [
+            NormalizedLibrary(
+                id=str(d["key"]),
+                title=d.get("title", "Library"),
+                type=_LIBRARY_TYPE.get(d.get("type", ""), "other"),
             )
-        return libs
+            for d in mc.get("Directory", [])
+        ]
 
     async def get_items(self, library_id: str) -> list[NormalizedItem]:
         async with self._client() as client:
             mc = await self._get_json(client, f"/library/sections/{library_id}/all")
-        items: list[NormalizedItem] = []
-        for m in mc.get("Metadata", []):
-            kind = "show" if m.get("type") == "show" else "movie"
-            items.append(
-                NormalizedItem(
-                    id=str(m["ratingKey"]),
-                    title=m.get("title", "Untitled"),
-                    year=m.get("year"),
-                    type=kind,
-                    poster=self._ref(m.get("thumb")),
-                    background=self._ref(m.get("art")),
-                )
+        return [
+            NormalizedItem(
+                id=str(m["ratingKey"]),
+                title=m.get("title", "Untitled"),
+                year=m.get("year"),
+                type="show" if m.get("type") == "show" else "movie",
+                poster=self._ref(m.get("thumb")),
             )
-        return items
+            for m in mc.get("Metadata", [])
+        ]
 
     async def get_item_detail(self, item_id: str) -> ItemDetail:
         async with self._client() as client:

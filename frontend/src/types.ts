@@ -25,7 +25,6 @@ export interface Library {
   id: string;
   title: string;
   type: "movie" | "show" | "other";
-  thumb?: string | null;
 }
 
 export interface MediaItem {
@@ -91,14 +90,7 @@ export interface ArtworkSettings {
   tvdb_configured: boolean;
 }
 
-export type PosterKind =
-  | "show"
-  | "movie"
-  | "season"
-  | "collection"
-  | "titlecard"
-  | "background"
-  | "unknown";
+export type PosterKind = "show" | "movie" | "season" | "collection" | "background" | "unknown";
 
 export interface PosterAsset {
   id: string;
@@ -107,7 +99,6 @@ export interface PosterAsset {
   season_number?: number | null;
   thumb_url: string;
   download_url: string;
-  source_url?: string | null;
   set_size?: number | null;
   set_url?: string | null;
 }
@@ -115,7 +106,6 @@ export interface PosterAsset {
 export interface PosterSet {
   set_url: string;
   title?: string | null;
-  author?: string | null;
   posters: PosterAsset[];
 }
 

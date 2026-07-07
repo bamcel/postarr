@@ -122,27 +122,26 @@ def update_server(
     token: Optional[str] = None,
     is_default: Optional[bool] = None,
 ) -> Optional[dict[str, Any]]:
-    sets: list[str] = []
-    params: list[Any] = []
+    changes: dict[str, Any] = {}
     if name is not None:
-        sets.append("name = ?"); params.append(name)
+        changes["name"] = name
     if type_ is not None:
-        sets.append("type = ?"); params.append(type_)
+        changes["type"] = type_
     if base_url is not None:
-        sets.append("base_url = ?"); params.append(base_url.rstrip("/"))
-    if token is not None and token != "":
-        # Empty string means "leave the existing token unchanged".
-        sets.append("token_enc = ?"); params.append(encrypt(token))
+        changes["base_url"] = base_url.rstrip("/")
+    if token:  # empty string means "leave the existing token unchanged"
+        changes["token_enc"] = encrypt(token)
     if is_default is not None:
-        sets.append("is_default = ?"); params.append(int(is_default))
-    sets.append("updated_at = datetime('now')")
+        changes["is_default"] = int(is_default)
 
+    sets = [f"{col} = ?" for col in changes] + ["updated_at = datetime('now')"]
     with get_conn() as conn:
         if is_default:
             conn.execute("UPDATE media_servers SET is_default = 0")
-        if sets:
-            params.append(server_id)
-            conn.execute(f"UPDATE media_servers SET {', '.join(sets)} WHERE id = ?", params)
+        conn.execute(
+            f"UPDATE media_servers SET {', '.join(sets)} WHERE id = ?",
+            [*changes.values(), server_id],
+        )
     return get_server(server_id)
 
 

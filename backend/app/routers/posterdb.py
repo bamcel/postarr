@@ -94,17 +94,13 @@ async def apply(req: ApplyRequest) -> ApplyResult:
     if server is None:
         raise HTTPException(status_code=404, detail="Server not found")
 
-    source = req.download_url or req.asset_id
-    if not source:
-        raise HTTPException(status_code=400, detail="Provide download_url or asset_id.")
-
     # ThePosterDB assets need the authenticated session; other providers
     # (Fanart/TVDB/AniList) serve public image URLs.
     try:
         if req.provider == "posterdb":
-            data, content_type = await posterdb.download(source)
+            data, content_type = await posterdb.download(req.download_url)
         else:
-            data, content_type = await download_public_image(source)
+            data, content_type = await download_public_image(req.download_url)
     except (PosterDBError, ArtworkError) as exc:
         return ApplyResult(ok=False, message=f"Download failed: {exc}")
 
@@ -113,5 +109,4 @@ async def apply(req: ApplyRequest) -> ApplyResult:
     except MediaError as exc:
         return ApplyResult(ok=False, message=f"Upload failed: {exc}")
 
-    label = "background" if req.target == "background" else "poster"
-    return ApplyResult(ok=True, message=f"Updated {label} successfully.")
+    return ApplyResult(ok=True, message=f"Updated {req.target} successfully.")

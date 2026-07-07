@@ -60,18 +60,14 @@ class JellyfinClient(MediaClient):
     async def get_libraries(self) -> list[NormalizedLibrary]:
         async with self._client() as client:
             data = await self._get_json(client, "/Library/MediaFolders")
-        libs: list[NormalizedLibrary] = []
-        for it in data.get("Items", []):
-            ctype = _COLLECTION_TYPE.get(it.get("CollectionType", ""), "other")
-            libs.append(
-                NormalizedLibrary(
-                    id=it["Id"],
-                    title=it.get("Name", "Library"),
-                    type=ctype,
-                    thumb=self._image_ref(it, "Primary"),
-                )
+        return [
+            NormalizedLibrary(
+                id=it["Id"],
+                title=it.get("Name", "Library"),
+                type=_COLLECTION_TYPE.get(it.get("CollectionType", ""), "other"),
             )
-        return libs
+            for it in data.get("Items", [])
+        ]
 
     async def get_items(self, library_id: str) -> list[NormalizedItem]:
         params = {
@@ -82,25 +78,21 @@ class JellyfinClient(MediaClient):
             "SortBy": "SortName",
             "SortOrder": "Ascending",
             "ImageTypeLimit": "1",
-            "EnableImageTypes": "Primary,Backdrop",
+            "EnableImageTypes": "Primary",
         }
         async with self._client() as client:
             params["userId"] = await self._get_user_id(client)
             data = await self._get_json(client, "/Items", params)
-        items: list[NormalizedItem] = []
-        for it in data.get("Items", []):
-            kind = "show" if it.get("Type") == "Series" else "movie"
-            items.append(
-                NormalizedItem(
-                    id=it["Id"],
-                    title=it.get("Name", "Untitled"),
-                    year=it.get("ProductionYear"),
-                    type=kind,
-                    poster=self._image_ref(it, "Primary"),
-                    background=self._image_ref(it, "Backdrop"),
-                )
+        return [
+            NormalizedItem(
+                id=it["Id"],
+                title=it.get("Name", "Untitled"),
+                year=it.get("ProductionYear"),
+                type="show" if it.get("Type") == "Series" else "movie",
+                poster=self._image_ref(it, "Primary"),
             )
-        return items
+            for it in data.get("Items", [])
+        ]
 
     async def get_item_detail(self, item_id: str) -> ItemDetail:
         async with self._client() as client:

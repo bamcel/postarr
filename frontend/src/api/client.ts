@@ -101,8 +101,7 @@ export const api = {
     item_id: string;
     target: ImageTarget;
     provider?: string;
-    download_url?: string;
-    asset_id?: string;
+    download_url: string;
   }) => request<ApplyResult>("/posterdb/apply", { method: "POST", body: JSON.stringify(data) }),
 
   // -- artwork providers (Fanart / AniList / TVDB) --

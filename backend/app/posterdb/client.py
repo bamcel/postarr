@@ -316,12 +316,12 @@ class PosterDBClient:
                 path = self._to_path(set_link)
                 soup = await self.fetch_page(path)
 
-        posters = self._parse_grid(soup, f"{POSTERDB_BASE_URL}{path}")
+        posters = self._parse_grid(soup)
 
         # Fallback: a lone poster page with no set — surface just that poster.
         if not posters and path.startswith("/poster/"):
             pid = path.rsplit("/", 1)[-1]
-            posters = [self._single_asset(pid, soup, f"{POSTERDB_BASE_URL}{path}")]
+            posters = [self._single_asset(pid, soup)]
 
         title_el = soup.find(["h1", "h2"])
         logger.info("get_set %s -> %d posters", path, len(posters))
@@ -443,7 +443,7 @@ class PosterDBClient:
         return dict(results)
 
     # -- parsing ----------------------------------------------------------
-    def _parse_grid(self, soup: BeautifulSoup, source_url: str) -> list[PosterAsset]:
+    def _parse_grid(self, soup: BeautifulSoup) -> list[PosterAsset]:
         cards = soup.select("div.col-6.col-lg-2.p-1")
         if not cards:
             # Resilient fallback: treat each data-poster-id holder's card as a unit.
@@ -454,13 +454,13 @@ class PosterDBClient:
         for card in cards:
             if card is None:
                 continue
-            asset = self._asset_from_card(card, source_url)
+            asset = self._asset_from_card(card)
             if asset and asset.id not in seen:
                 seen.add(asset.id)
                 assets.append(asset)
         return assets
 
-    def _asset_from_card(self, card, source_url: str) -> Optional[PosterAsset]:
+    def _asset_from_card(self, card) -> Optional[PosterAsset]:
         holder = card.select_one("[data-poster-id]")
         if holder is None:
             return None
@@ -501,7 +501,6 @@ class PosterDBClient:
             season_number=season,
             thumb_url=_proxy_thumb(thumb),
             download_url=_asset_url(poster_id),
-            source_url=source_url,
             set_size=set_size,
             set_url=set_url,
         )
@@ -529,7 +528,7 @@ class PosterDBClient:
                 return cand
         return None
 
-    def _single_asset(self, poster_id: str, soup: BeautifulSoup, source_url: str) -> PosterAsset:
+    def _single_asset(self, poster_id: str, soup: BeautifulSoup) -> PosterAsset:
         title_tag = soup.find("title")
         title = title_tag.get_text(strip=True).split(" - ")[0] if title_tag else f"Poster {poster_id}"
         return PosterAsset(
@@ -538,7 +537,6 @@ class PosterDBClient:
             kind="unknown",
             thumb_url=_proxy_thumb(_asset_url(poster_id)),
             download_url=_asset_url(poster_id),
-            source_url=source_url,
         )
 
     @staticmethod
