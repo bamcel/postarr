@@ -96,6 +96,23 @@ restarts and image upgrades.
 
 To update after pulling new code: `docker compose up -d --build`.
 
+## Run on Unraid
+
+A ready-made Docker template is at [`unraid-template.xml`](unraid-template.xml) — it points at
+the pre-built image on GHCR (`ghcr.io/bamcel/postarr:latest`, published automatically by
+[a GitHub Action](.github/workflows/docker-publish.yml) on every push to `main`), maps the web
+UI to port `8000`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the same
+`host.docker.internal` mapping as the Compose file above.
+
+1. **Docker** tab → **Add Container** → scroll to the bottom → **Template repositories** →
+   paste `https://raw.githubusercontent.com/bamcel/postarr/main/unraid-template.xml` → **Save**.
+2. Postarr now appears as a container to add — set the **Data** path if you don't want the
+   default `/mnt/user/appdata/postarr`, then **Apply**.
+3. Open the WebUI from the Docker tab once it's healthy.
+
+(Or skip step 1 and just download the XML into
+`/boot/config/plugins/dockerMan/templates-user/` yourself.)
+
 ## Quick start (development)
 
 Two processes: the API on `:8000` and the Vite dev server on `:5173` (which proxies `/api`).
