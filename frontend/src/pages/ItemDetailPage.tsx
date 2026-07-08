@@ -34,16 +34,26 @@ export default function ItemDetailPage() {
 
   return (
     <div className="flex h-full">
+      {/* Raw backdrop image only: fixed to the viewport (not just the hero
+          column) so it extends behind the sidebar and artwork panel too, like
+          Emby's own detail page — those panels are translucent + backdrop-
+          blur, so it shows through them blurred. -z-10 keeps it behind all
+          normal-flow content without needing z-index bumps elsewhere. Kept
+          separate from the darkening gradients below: those are tuned to fade
+          in from the hero column's own left edge (behind the poster/title),
+          so if they lived in this viewport-wide layer they'd paint solid dark
+          under the actual sidebar instead — defeating the blur-through. */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        {backdrop && <img src={backdrop} alt="" className="h-full w-full object-cover" />}
+      </div>
+
       {/* Left: hero + seasons */}
       <div className="relative h-full flex-1 overflow-y-auto">
-        {/* Backdrop: covers the whole hero (no CSS blur, so it stays crisp),
-            pinned outside the scroll flow so it stays in place while content
-            scrolls over it. A uniform dark wash dims the whole image (matching
-            a real media-server detail page), with extra darkening on the left
-            (behind the poster/title/logo) and at the bottom (behind the
-            seasons row) where text needs the most contrast. */}
+        {/* Darkening gradients: scoped to just the hero column (not the fixed
+            image above) for text contrast — a uniform dark wash, with extra
+            darkening on the left (behind the poster/title/logo) and at the
+            bottom (behind the seasons row). */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          {backdrop && <img src={backdrop} alt="" className="h-full w-full object-cover" />}
           <div className="absolute inset-0 bg-black/55" />
           <div className="absolute inset-0 bg-gradient-to-r from-base/95 via-base/60 via-50% to-transparent to-90%" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-50% to-base/85" />

@@ -15,7 +15,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface/60 p-4">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface/90 p-4 backdrop-blur-xl">
         <div className="px-2 py-3">
           <Logo />
         </div>

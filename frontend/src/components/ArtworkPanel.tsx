@@ -30,7 +30,7 @@ export default function ArtworkPanel({ serverId, item, prefill }: Props) {
   ];
 
   return (
-    <div className="flex h-full flex-col border-l border-border bg-surface/70">
+    <div className="flex h-full flex-col border-l border-border bg-surface/90 backdrop-blur-xl">
       <div className="border-b border-border p-3">
         <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted">
           <Images className="size-4 text-accent" /> Artwork
