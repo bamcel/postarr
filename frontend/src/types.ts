@@ -34,6 +34,7 @@ export interface MediaItem {
   type: "movie" | "show" | "collection";
   poster?: string | null;
   background?: string | null;
+  added_at?: string | null;
 }
 
 export interface Season {

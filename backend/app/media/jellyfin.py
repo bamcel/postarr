@@ -97,7 +97,7 @@ class JellyfinClient(MediaClient):
         params = {
             "Recursive": "true",
             "IncludeItemTypes": "BoxSet" if is_collections else "Movie,Series",
-            "Fields": "ProductionYear",
+            "Fields": "ProductionYear,DateCreated",
             "SortBy": "SortName",
             "SortOrder": "Ascending",
             "ImageTypeLimit": "1",
@@ -119,6 +119,7 @@ class JellyfinClient(MediaClient):
                 year=it.get("ProductionYear"),
                 type=_item_type(it),
                 poster=self._image_ref(it, "Primary"),
+                added_at=it.get("DateCreated"),
             )
             for it in items_raw
         ]
@@ -139,7 +140,7 @@ class JellyfinClient(MediaClient):
             {
                 "IncludeItemTypes": "BoxSet",
                 "Recursive": "true",
-                "Fields": "ProductionYear",
+                "Fields": "ProductionYear,DateCreated",
                 "ImageTypeLimit": "1",
                 "EnableImageTypes": "Primary",
                 "userId": uid,

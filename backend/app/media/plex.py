@@ -9,6 +9,7 @@ newly-uploaded asset becomes the selected one automatically.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
@@ -28,6 +29,15 @@ def _item_type(m: dict) -> str:
     if t == "collection":
         return "collection"
     return "show" if t == "show" else "movie"
+
+
+def _added_at(m: dict) -> Optional[str]:
+    """Plex's addedAt is a Unix timestamp (seconds); normalize to ISO 8601
+    like Jellyfin/Emby's DateCreated so the frontend can parse either."""
+    ts = m.get("addedAt")
+    if not ts:
+        return None
+    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
 
 
 class PlexClient(MediaClient):
@@ -88,6 +98,7 @@ class PlexClient(MediaClient):
                 year=m.get("year"),
                 type=_item_type(m),
                 poster=self._ref(m.get("thumb")),
+                added_at=_added_at(m),
             )
             for m in metadata
         ]

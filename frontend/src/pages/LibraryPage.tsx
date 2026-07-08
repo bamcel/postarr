@@ -4,13 +4,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ServerCrash } from "lucide-react";
+import { Search, ServerCrash, Sparkles } from "lucide-react";
 import { api, imageUrl } from "../api/client";
 import { useServers } from "../lib/serverContext";
 import PosterCard from "../components/PosterCard";
 import { EmptyState, Spinner } from "../components/ui";
 
 const GROUP_COLLECTIONS_KEY = "postarr.groupCollections";
+const LAST_VISIT_PREFIX = "postarr.lastVisit.";
 
 export default function LibraryPage() {
   const navigate = useNavigate();
@@ -75,6 +76,30 @@ export default function LibraryPage() {
     const q = filter.trim().toLowerCase();
     return q ? all.filter((i) => i.title.toLowerCase().includes(q)) : all;
   }, [itemsQ.data, filter]);
+
+  // "Since last visit": read the stored timestamp for this library BEFORE
+  // overwriting it with now, so this render can still flag anything added
+  // since that prior visit. No stored value (first-ever visit) means there's
+  // nothing to compare against, so nothing gets flagged — not "everything."
+  const [sinceTimestamp, setSinceTimestamp] = useState<number | null>(null);
+  useEffect(() => {
+    if (serverId == null || libraryId == null) return;
+    const key = `${LAST_VISIT_PREFIX}${serverId}.${libraryId}`;
+    const stored = localStorage.getItem(key);
+    setSinceTimestamp(stored ? Number(stored) : null);
+    localStorage.setItem(key, String(Date.now()));
+  }, [serverId, libraryId]);
+
+  const newMissingIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (sinceTimestamp == null) return ids;
+    for (const item of itemsQ.data ?? []) {
+      if (item.poster || !item.added_at) continue;
+      const added = Date.parse(item.added_at);
+      if (!Number.isNaN(added) && added > sinceTimestamp) ids.add(item.id);
+    }
+    return ids;
+  }, [itemsQ.data, sinceTimestamp]);
 
   if (serversLoading) return <Spinner label="Loading…" />;
 
@@ -170,6 +195,14 @@ export default function LibraryPage() {
           <EmptyState title={filter ? "No matches" : "This library is empty"} />
         )}
 
+        {newMissingIds.size > 0 && (
+          <div className="mb-5 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent">
+            <Sparkles className="size-4 shrink-0" />
+            {newMissingIds.size} new title{newMissingIds.size === 1 ? "" : "s"} missing artwork
+            since your last visit
+          </div>
+        )}
+
         {items.length > 0 && (
           <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]">
             {items.map((item) => (
@@ -179,6 +212,7 @@ export default function LibraryPage() {
                 title={item.title}
                 subtitle={item.year ? String(item.year) : undefined}
                 kind={item.type}
+                badge={newMissingIds.has(item.id) ? "NEW" : undefined}
                 onOpen={() => navigate(`/server/${serverId}/item/${item.id}`)}
               />
             ))}

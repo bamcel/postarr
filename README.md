@@ -33,6 +33,9 @@ once.
   page.
 - **Auto-apply set**: map an entire ThePosterDB set onto a show and its matching seasons in
   one click.
+- **New-item detection**: a library remembers when you last visited it and flags titles added
+  to the media server since then that still have no poster — a small banner plus a **NEW**
+  badge on the poster card, so growing libraries don't quietly accumulate gaps.
 - **Manual tab**: upload your own image file (or paste an image URL) and apply it to any
   target.
 - **ID override**: each provider tab has a search box pre-filled from the item's known ids;

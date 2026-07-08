@@ -72,6 +72,10 @@ class NormalizedItem(BaseModel):
     poster: Optional[str] = None      # image proxy ref
     # Only populated on item DETAIL (the library grid never shows backdrops).
     background: Optional[str] = None  # image proxy ref
+    # ISO 8601 timestamp the item was added to the media server's library —
+    # lets the UI flag titles added since your last visit that still have no
+    # poster (see LibraryPage's "new + missing artwork" badge).
+    added_at: Optional[str] = None
 
 
 class NormalizedSeason(BaseModel):

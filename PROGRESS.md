@@ -36,6 +36,16 @@ tested for real.
 Settings is tabbed (**Server Setup** / **Database Connection**); the sidebar and artwork panel
 use a frosted-glass look (blurred backdrop bleeding behind them, matching Emby's own UI).
 
+**New-item detection**: each library remembers when you last visited it (localStorage, per
+server+library) and flags titles added since then that still have no poster — a summary banner
+plus a "NEW" badge per card. Backend adds `added_at` (ISO 8601) to `NormalizedItem`, sourced
+from Emby/Jellyfin's `DateCreated` field or Plex's `addedAt` Unix timestamp. Verified live: real
+`added_at` values come back from Emby; the intersection logic (recent AND no poster) was
+confirmed correct by cross-checking against the real API data (0 items currently qualify — the
+user's library already has full artwork) and then proven positive by injecting a synthetic
+recent+posterless item via a monkey-patched `fetch` in the browser, which correctly triggered
+both the banner and the badge.
+
 Full endpoint list and setup steps are in README.md — don't duplicate that here.
 
 ## Known live gotchas (still true, see CLAUDE.md for the full list)
@@ -54,8 +64,8 @@ Full endpoint list and setup steps are in README.md — don't duplicate that her
 
 ## Ideas not yet built (suggested, not requested)
 
-- A "missing artwork" report/dashboard for a library.
-- New-item detection (flag recently-added titles missing artwork).
+- A "missing artwork" report/dashboard covering a whole library at once (new-item detection
+  above only flags what's changed since your last visit, not a full audit).
 - Backend caching for the collection-membership lookup (offered, declined "for now").
 
 ## To resume
