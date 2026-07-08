@@ -61,7 +61,7 @@ export interface ArtworkItem {
   id: string;
   provider: string;
   type: ArtworkType;
-  kind: "movie" | "show" | "season";
+  kind: "movie" | "show" | "season" | "collection";
   season_number?: number | null;
   title?: string | null;
   lang?: string | null;

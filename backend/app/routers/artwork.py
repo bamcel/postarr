@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 
 from .. import db
 from ..artwork import get_provider, provider_infos
@@ -76,6 +76,20 @@ async def get_artwork(
         # A friendly message (e.g. missing id / key) rather than a hard error.
         return ArtworkResults(provider=provider, item_title=item.title, items=[], message=str(exc))
     return ArtworkResults(provider=provider, item_title=item.title, items=items)
+
+
+@router.get("/mediux/image")
+async def mediux_image(url: str = Query(..., description="MediUX image-proxy URL")) -> Response:
+    """Proxy a MediUX thumbnail — its own Next.js image proxy 403s without a
+    same-origin Referer, so the browser can't load thumbnails directly."""
+    prov = get_provider("mediux")
+    if prov is None:
+        raise HTTPException(status_code=404, detail="MediUX provider not available")
+    try:
+        data, content_type = await prov.fetch_thumb(url)  # type: ignore[attr-defined]
+    except ArtworkError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=86400"})
 
 
 @router.post("/upload", response_model=ApplyResult)

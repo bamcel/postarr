@@ -106,9 +106,9 @@ ArtworkType = Literal["poster", "background", "banner", "logo"]
 
 class ArtworkItem(BaseModel):
     id: str
-    provider: str                       # "fanart" | "anilist" | "tvdb"
+    provider: str                       # "fanart" | "anilist" | "tvdb" | "mediux"
     type: ArtworkType
-    kind: Literal["movie", "show", "season"] = "show"
+    kind: Literal["movie", "show", "season", "collection"] = "show"
     season_number: Optional[int] = None
     title: Optional[str] = None
     lang: Optional[str] = None

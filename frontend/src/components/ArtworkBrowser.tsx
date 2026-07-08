@@ -31,6 +31,8 @@ function defaultIdFor(provider: string, item: ItemDetail): string {
   }
   if (provider === "tvdb") return item.external_ids.tvdb ?? "";
   if (provider === "anilist") return item.external_ids.anilist ?? "";
+  // MediUX addresses movies/shows/collections alike by TMDB id.
+  if (provider === "mediux") return item.external_ids.tmdb ?? "";
   return "";
 }
 
@@ -38,6 +40,7 @@ function idPlaceholder(provider: string, item: ItemDetail): string {
   if (provider === "fanart") return item.type === "movie" ? "TMDB or IMDb id…" : "TVDB id…";
   if (provider === "tvdb") return "TVDB id…";
   if (provider === "anilist") return "AniList id or title…";
+  if (provider === "mediux") return "TMDB id…";
   return "id…";
 }
 
@@ -289,5 +292,5 @@ function ApplyBtn({ label, onClick, busy }: { label: string; onClick: () => void
 }
 
 function providerLabel(name: string): string {
-  return { fanart: "Fanart.tv", tvdb: "TheTVDB", anilist: "AniList" }[name] ?? name;
+  return { fanart: "Fanart.tv", tvdb: "TheTVDB", anilist: "AniList", mediux: "MediUX" }[name] ?? name;
 }

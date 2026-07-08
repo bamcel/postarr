@@ -8,11 +8,12 @@ from ..schemas import ArtworkProviderInfo
 from .anilist import AniListProvider
 from .base import ArtworkProvider
 from .fanart import FanartProvider
+from .mediux import MediuxProvider
 from .tvdb import TVDBProvider
 
 # Instantiated once; providers read settings fresh on each call and cache tokens.
 PROVIDERS: dict[str, ArtworkProvider] = {
-    p.name: p for p in (FanartProvider(), TVDBProvider(), AniListProvider())
+    p.name: p for p in (FanartProvider(), TVDBProvider(), AniListProvider(), MediuxProvider())
 }
 
 
