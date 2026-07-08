@@ -74,8 +74,10 @@ export const api = {
 
   // -- libraries / items --
   getLibraries: (serverId: number) => request<Library[]>(`/servers/${serverId}/libraries`),
-  getItems: (serverId: number, libraryId: string) =>
-    request<MediaItem[]>(`/servers/${serverId}/libraries/${encodeURIComponent(libraryId)}/items`),
+  getItems: (serverId: number, libraryId: string, groupCollections = true) =>
+    request<MediaItem[]>(
+      `/servers/${serverId}/libraries/${encodeURIComponent(libraryId)}/items?group_collections=${groupCollections}`,
+    ),
   getItemDetail: (serverId: number, itemId: string) =>
     request<ItemDetail>(`/servers/${serverId}/items/${encodeURIComponent(itemId)}`),
 

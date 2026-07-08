@@ -1,11 +1,12 @@
 # Postarr
 
 **Postarr** is a self-hosted, open-source artwork manager for **Plex / Jellyfin / Emby**
-libraries. Browse your servers, then swap in posters, backgrounds, and logos from
-[ThePosterDB](https://theposterdb.com), [Fanart.tv](https://fanart.tv),
-[TheTVDB](https://thetvdb.com), and [AniList](https://anilist.co) — per image, per season
-(including Season 0 / Specials), or a whole ThePosterDB set onto a series and all its
-seasons at once.
+libraries. Browse your servers — including **collections** (Emby/Jellyfin) — then swap in
+posters, backgrounds, and logos from [ThePosterDB](https://theposterdb.com),
+[Fanart.tv](https://fanart.tv), [TheTVDB](https://thetvdb.com), [AniList](https://anilist.co),
+and [MediUX](https://mediux.pro) — per image, per season (including Season 0 / Specials), per
+title inside a collection, or a whole ThePosterDB set onto a series and all its seasons at
+once.
 
 ![Postarr](docs/screenshot.png)
 
@@ -18,11 +19,18 @@ seasons at once.
 
 ## Features
 
-- **Four artwork sources** behind one panel: ThePosterDB (search → title → set drill-down,
-  with per-set poster counts and empty results auto-hidden), plus Fanart.tv, TheTVDB, and
-  AniList looked up automatically by your items' TMDB/TVDB/IMDb/AniList ids.
+- **Five artwork sources** behind one panel: ThePosterDB (search → title → set drill-down,
+  with per-set poster counts and empty results auto-hidden), plus Fanart.tv, TheTVDB, AniList,
+  and MediUX, all looked up automatically by your items' TMDB/TVDB/IMDb/AniList ids.
+- **Collections** (Emby/Jellyfin): a virtual **Collections** library lists every collection on
+  the server — edit a collection's own poster/backdrop, browse the titles inside it, and jump
+  straight to any member's own full detail page. A **Group Collections** toggle on the library
+  view replaces a collection's member movies/shows with a single tile, like Emby's own library
+  view — no more scrolling past every "John Wick" sequel individually.
 - **Apply anywhere**: set any image as the poster, background, or clear logo — or use
-  **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season.
+  **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season, or a
+  poster from a collection's page directly onto one of its member movies without leaving the
+  page.
 - **Auto-apply set**: map an entire ThePosterDB set onto a show and its matching seasons in
   one click.
 - **Manual tab**: upload your own image file (or paste an image URL) and apply it to any
@@ -30,7 +38,8 @@ seasons at once.
 - **ID override**: each provider tab has a search box pre-filled from the item's known ids;
   type a different id (or, for AniList, a title) to fix a bad match on the spot.
 - **Clear-logo detail pages**: the item view shows the server's stored logo art over a
-  full-bleed backdrop, like a native media-server detail page.
+  full-bleed backdrop, blurred behind the sidebar and artwork panel too, like a native
+  media-server detail page.
 
 ## Architecture
 
@@ -42,7 +51,7 @@ frontend/  React + Vite + TypeScript + Tailwind v4   (the UI)
 backend/   FastAPI + SQLite                            (API, scraping, server clients)
            app/media/      Plex / Jellyfin / Emby clients behind one interface
            app/posterdb/   ThePosterDB login + scraping
-           app/artwork/    Fanart.tv / TheTVDB / AniList providers
+           app/artwork/    Fanart.tv / TheTVDB / AniList / MediUX providers
            app/routers/    REST endpoints
            data/           SQLite db + encryption key (git-ignored)
 ```
@@ -132,23 +141,28 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
    - **Jellyfin / Emby API key**: Dashboard → *API Keys* → add one.
    - Use **Test connection** to confirm before saving.
 3. **Add your ThePosterDB account** (email + password) and hit **Test login**.
-4. *(Optional)* Under **Artwork sources**, add a free
+4. *(Optional)* Under **Settings → Database Connection**, add a free
    [Fanart.tv personal API key](https://fanart.tv/get-an-api-key/) and/or a
-   [TheTVDB v4 API key](https://thetvdb.com/api-information) to enable those tabs.
-   AniList needs no key.
+   [TheTVDB v4 API key](https://thetvdb.com/dashboard/account/apikey) to enable those tabs.
+   AniList and MediUX need no key or account — they're ready to use immediately.
 
 ## Using it
 
 1. Pick a server (sidebar) and a **library** (tabs), then **click** a title to open it —
-   the artwork panel searches for it automatically.
+   the artwork panel searches for it automatically. On Emby/Jellyfin, a **Collections**
+   library tab lists every collection on the server; use the **Group Collections** toggle
+   (top-right of the library view) to switch a regular library between showing each
+   collection's movies/shows individually or collapsed into one tile.
 2. **ThePosterDB tab**: pick a title from the categorized results (Movies / Shows /
    Collections, with counts), hover a cover and **View set (N)** to see the full set, then
    apply single images or **Auto-apply set**.
-3. **Fanart.tv / TheTVDB / AniList tabs**: artwork loads by the item's ids, grouped into
-   Posters / Backgrounds / Banners / Logos. Wrong match? Type the right id in the search box.
+3. **Fanart.tv / TheTVDB / AniList / MediUX tabs**: artwork loads by the item's ids, grouped
+   into Posters / Backgrounds / Banners / Logos. Wrong match? Type the right id in the search
+   box.
 4. **Manual tab**: upload a file or paste an image URL, choose the target, apply.
 5. On any image, **Custom** lets you choose exactly where it lands — poster, background,
-   logo, or a specific season.
+   logo, a specific season, or — on a collection's page — any of its member movies/shows,
+   without leaving the page.
 
 ## API
 
@@ -158,9 +172,9 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | --- | --- | --- |
 | `GET/POST/PATCH/DELETE` | `/api/servers…` | manage media servers |
 | `POST` | `/api/servers/{id}/test` | test a saved connection |
-| `GET` | `/api/servers/{id}/libraries` | list libraries |
-| `GET` | `/api/servers/{id}/libraries/{lib}/items` | list titles |
-| `GET` | `/api/servers/{id}/items/{item}` | item detail: seasons, logo, external ids |
+| `GET` | `/api/servers/{id}/libraries` | list libraries (includes a virtual `collections` one, Emby/Jellyfin) |
+| `GET` | `/api/servers/{id}/libraries/{lib}/items[?group_collections=]` | list titles; toggle collection grouping (default on, Emby/Jellyfin) |
+| `GET` | `/api/servers/{id}/items/{item}` | item detail: seasons, members (if a collection), logo, external ids |
 | `GET` | `/api/servers/{id}/image?ref=…` | auth'd media-server image proxy |
 | `PUT` | `/api/posterdb/credentials` | save ThePosterDB login |
 | `GET` | `/api/posterdb/search?term=` | categorized ThePosterDB search |
@@ -168,8 +182,9 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | `GET` | `/api/posterdb/set?url=` | scrape a set / poster / title page |
 | `GET` | `/api/posterdb/image?url=` | cached ThePosterDB thumbnail proxy |
 | `POST` | `/api/posterdb/apply` | download an image + apply to a server |
-| `GET` | `/api/artwork?provider=&server_id=&item_id=[&id_override=]` | Fanart/TVDB/AniList artwork |
+| `GET` | `/api/artwork?provider=&server_id=&item_id=[&id_override=]` | Fanart/TVDB/AniList/MediUX artwork |
 | `GET/PUT` | `/api/artwork/settings` | Fanart/TVDB API keys |
+| `GET` | `/api/artwork/mediux/image?url=` | cached MediUX thumbnail proxy |
 | `POST` | `/api/artwork/upload` | apply a user-uploaded image file |
 
 ## License

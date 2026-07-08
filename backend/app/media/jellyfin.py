@@ -8,6 +8,7 @@ to the real image mime — sending raw binary yields "Incorrect ContentType".
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from typing import Optional
 
@@ -91,7 +92,7 @@ class JellyfinClient(MediaClient):
             libraries.append(NormalizedLibrary(id=_COLLECTIONS_ID, title="Collections", type="collection"))
         return libraries
 
-    async def get_items(self, library_id: str) -> list[NormalizedItem]:
+    async def get_items(self, library_id: str, group_collections: bool = True) -> list[NormalizedItem]:
         is_collections = library_id == _COLLECTIONS_ID
         params = {
             "Recursive": "true",
@@ -105,8 +106,12 @@ class JellyfinClient(MediaClient):
         if not is_collections:
             params["ParentId"] = library_id
         async with self._client() as client:
-            params["userId"] = await self._get_user_id(client)
+            uid = await self._get_user_id(client)
+            params["userId"] = uid
             data = await self._get_json(client, "/Items", params)
+            items_raw = data.get("Items", [])
+            if not is_collections and group_collections:
+                items_raw = await self._collapse_boxsets(client, uid, items_raw)
         return [
             NormalizedItem(
                 id=it["Id"],
@@ -115,8 +120,68 @@ class JellyfinClient(MediaClient):
                 type=_item_type(it),
                 poster=self._image_ref(it, "Primary"),
             )
-            for it in data.get("Items", [])
+            for it in items_raw
         ]
+
+    async def _collapse_boxsets(self, client: httpx.AsyncClient, uid: str, items: list[dict]) -> list[dict]:
+        """Replace movies/shows that belong to a collection with a single
+        BoxSet tile, like Emby's own "group into collections" library view.
+
+        Emby's own ``CollapseBoxSetItems`` query param doesn't reliably do
+        this (tested live: it silently drops grouped items instead of
+        replacing them with a tile), so the membership map is built by hand:
+        list every BoxSet, fetch each one's direct children in parallel, then
+        swap the first member encountered for its BoxSet and drop the rest.
+        """
+        boxsets = await self._get_json(
+            client,
+            "/Items",
+            {
+                "IncludeItemTypes": "BoxSet",
+                "Recursive": "true",
+                "Fields": "ProductionYear",
+                "ImageTypeLimit": "1",
+                "EnableImageTypes": "Primary",
+                "userId": uid,
+            },
+        )
+        boxset_list = boxsets.get("Items", [])
+        if not boxset_list:
+            return items
+
+        children_lists = await asyncio.gather(
+            *(
+                self._get_json(
+                    client,
+                    "/Items",
+                    {"ParentId": bs["Id"], "IncludeItemTypes": "Movie,Series", "userId": uid},
+                )
+                for bs in boxset_list
+            ),
+            return_exceptions=True,
+        )
+        member_to_boxset: dict[str, dict] = {}
+        for bs, children in zip(boxset_list, children_lists):
+            if not isinstance(children, dict):
+                continue
+            for child in children.get("Items", []):
+                member_to_boxset.setdefault(child["Id"], bs)
+        if not member_to_boxset:
+            return items
+
+        result: list[dict] = []
+        seen_boxsets: set[str] = set()
+        for it in items:
+            bs = member_to_boxset.get(it["Id"])
+            if bs is None:
+                result.append(it)
+                continue
+            if bs["Id"] in seen_boxsets:
+                continue  # drop later members of an already-emitted collection
+            seen_boxsets.add(bs["Id"])
+            result.append(bs)
+        result.sort(key=lambda it: (it.get("Name") or "").lower())
+        return result
 
     async def get_item_detail(self, item_id: str) -> ItemDetail:
         async with self._client() as client:

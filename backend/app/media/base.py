@@ -54,8 +54,10 @@ class MediaClient(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def get_items(self, library_id: str) -> list[NormalizedItem]:
-        ...
+    async def get_items(self, library_id: str, group_collections: bool = True) -> list[NormalizedItem]:
+        """``group_collections`` replaces a collection's member movies/shows
+        with a single collection tile, like Emby's own library view (only
+        Jellyfin/Emby implement this; Plex ignores the flag for now)."""
 
     @abc.abstractmethod
     async def get_item_detail(self, item_id: str) -> ItemDetail:

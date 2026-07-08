@@ -71,7 +71,9 @@ class PlexClient(MediaClient):
             libraries.append(NormalizedLibrary(id=_COLLECTIONS_ID, title="Collections", type="collection"))
         return libraries
 
-    async def get_items(self, library_id: str) -> list[NormalizedItem]:
+    async def get_items(self, library_id: str, group_collections: bool = True) -> list[NormalizedItem]:
+        # group_collections isn't implemented for Plex yet — accepted for
+        # interface parity with Jellyfin/Emby, always behaves as ungrouped.
         async with self._client() as client:
             if library_id == _COLLECTIONS_ID:
                 sections = (await self._get_json(client, "/library/sections")).get("Directory", [])

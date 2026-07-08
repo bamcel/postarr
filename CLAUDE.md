@@ -31,8 +31,11 @@ There is no test suite; verification is done against a live media server.
 - `backend/app/posterdb/client.py` — ALL ThePosterDB logic: Laravel CSRF
   login, HTML scraping, thumbnail proxy/cache. Module-level singleton
   (`posterdb`) holds the authenticated session across requests.
-- `backend/app/artwork/` — API-based providers (Fanart.tv, TheTVDB, AniList)
-  behind an `ArtworkProvider` ABC, looked up by the item's `external_ids`.
+- `backend/app/artwork/` — API-based providers (Fanart.tv, TheTVDB, AniList,
+  MediUX) behind an `ArtworkProvider` ABC, looked up by the item's
+  `external_ids`. MediUX has no public API yet, so it scrapes mediux.pro's
+  own server-rendered pages the same way ThePosterDB does, just without
+  needing a login.
 - `frontend/src/components/ArtworkPanel.tsx` — provider selector wrapping
   `PosterDBBody` (ThePosterDB drill-down), `ArtworkBrowser` (API providers),
   and `ManualUpload`. Apply targets are built once in `lib/targets.ts`.
@@ -69,6 +72,21 @@ There is no test suite; verification is done against a live media server.
 - **Git Bash on Windows mangles container paths** (`/tmp/...` becomes
   `C:/...`) in `docker exec`/`docker cp` args — wrap the remote command in
   `sh -c '...'` or set `MSYS_NO_PATHCONV=1`.
+- **Emby's `/Items?Ids=` lookup silently returns nothing for a BoxSet**
+  unless `IncludeItemTypes` explicitly allow-lists it alongside the regular
+  types (`Movie,Series,BoxSet`) — no error, just an empty result, which reads
+  as "item not found."
+- **Emby's `CollapseBoxSetItems` query param doesn't reliably group a
+  library's movies into their collections** — tested live: it silently drops
+  the extra member items instead of replacing them with a collection tile.
+  Grouping is done by hand instead (`JellyfinClient._collapse_boxsets`):
+  list every BoxSet, fetch each one's children via `ParentId` in parallel,
+  then substitute.
+- **MediUX needs no login**, unlike ThePosterDB — a plain browser-header GET
+  reaches `mediux.pro/{movies,shows,collections}/{tmdbId}` fine. But its
+  Next.js image proxy (used for thumbnails) 403s without a same-origin
+  `Referer` header and 400s on a non-whitelisted `w=` value (only specific
+  sizes like 256 are allowed) — see `backend/app/artwork/mediux.py`.
 
 ## Conventions
 
@@ -78,4 +96,4 @@ There is no test suite; verification is done against a live media server.
 - Banners are display-only everywhere: no supported media server has a
   banner-upload endpoint.
 - git checkpoints are tagged (`checkpoint-N`); the user asks for commits
-  explicitly and keeps the repo local-only (no remote).
+  explicitly. The repo is pushed to `https://github.com/bamcel/postarr`.

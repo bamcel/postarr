@@ -10,6 +10,8 @@ import { useServers } from "../lib/serverContext";
 import PosterCard from "../components/PosterCard";
 import { EmptyState, Spinner } from "../components/ui";
 
+const GROUP_COLLECTIONS_KEY = "postarr.groupCollections";
+
 export default function LibraryPage() {
   const navigate = useNavigate();
   const { selectedServer, isLoading: serversLoading } = useServers();
@@ -20,6 +22,19 @@ export default function LibraryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const libraryId = searchParams.get("lib");
   const [filter, setFilter] = useState("");
+
+  // Whether a collection's member movies/shows are replaced by a single
+  // collection tile (Emby/Jellyfin only — Plex ignores this server-side for
+  // now). Persisted since resetting on every navigation would be annoying.
+  const [groupCollections, setGroupCollections] = useState(
+    () => localStorage.getItem(GROUP_COLLECTIONS_KEY) !== "false",
+  );
+  const toggleGroupCollections = () =>
+    setGroupCollections((v) => {
+      const next = !v;
+      localStorage.setItem(GROUP_COLLECTIONS_KEY, String(next));
+      return next;
+    });
 
   const selectLibrary = (id: string) =>
     setSearchParams(
@@ -50,8 +65,8 @@ export default function LibraryPage() {
   }, [librariesQ.data, libraryId]);
 
   const itemsQ = useQuery({
-    queryKey: ["items", serverId, libraryId],
-    queryFn: () => api.getItems(serverId!, libraryId!),
+    queryKey: ["items", serverId, libraryId, groupCollections],
+    queryFn: () => api.getItems(serverId!, libraryId!, groupCollections),
     enabled: serverId != null && libraryId != null,
   });
 
@@ -96,21 +111,45 @@ export default function LibraryPage() {
         </div>
 
         {/* Library tabs */}
-        <div className="mt-5 flex gap-1 overflow-x-auto pb-px">
-          {librariesQ.isLoading && <span className="py-2 text-sm text-faint">Loading libraries…</span>}
-          {browseableLibs.map((lib) => (
-            <button
-              key={lib.id}
-              onClick={() => selectLibrary(lib.id)}
-              className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-                libraryId === lib.id
-                  ? "border-accent text-white"
-                  : "border-transparent text-muted hover:text-white"
-              }`}
-            >
-              {lib.title}
-            </button>
-          ))}
+        <div className="mt-5 flex items-center justify-between gap-4">
+          <div className="flex gap-1 overflow-x-auto pb-px">
+            {librariesQ.isLoading && <span className="py-2 text-sm text-faint">Loading libraries…</span>}
+            {browseableLibs.map((lib) => (
+              <button
+                key={lib.id}
+                onClick={() => selectLibrary(lib.id)}
+                className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  libraryId === lib.id
+                    ? "border-accent text-white"
+                    : "border-transparent text-muted hover:text-white"
+                }`}
+              >
+                {lib.title}
+              </button>
+            ))}
+          </div>
+
+          {libraryId !== "collections" && (
+            <label className="flex shrink-0 items-center gap-2 pb-px text-sm text-muted">
+              Group Collections
+              <button
+                type="button"
+                role="switch"
+                aria-checked={groupCollections}
+                onClick={toggleGroupCollections}
+                title="Replace a collection's movies/shows with a single tile"
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                  groupCollections ? "bg-accent" : "bg-surface-2"
+                }`}
+              >
+                <span
+                  className={`inline-block size-4 transform rounded-full bg-white transition-transform ${
+                    groupCollections ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </label>
+          )}
         </div>
       </div>
 

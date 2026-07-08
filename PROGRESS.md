@@ -9,66 +9,59 @@ go stale.
 
 - Branch `main`, container `postarr` is **up and healthy** on `http://localhost:8000`
   (`docker compose ps` to confirm — it may have been stopped since).
-- **Uncommitted changes in the working tree** (two bundled pieces of work, both verified working,
-  neither committed yet):
-  1. **Optimization pass** — removed dead fields (`PosterSet.author`, `PosterAsset.source_url`,
-     `NormalizedLibrary.thumb`, `ApplyRequest.asset_id`, unused `"titlecard"` kind), library-item
-     LIST endpoints no longer compute a per-item background ref (detail still does), a real bug
-     fix (applying a logo said "Updated poster successfully"), `db.update_server` refactored,
-     README rewritten to match current features, `CLAUDE.md` created (new, untracked).
-  2. **Settings UI merge** — "ThePosterDB account" and "Artwork sources" are now one card
-     (`ArtworkSourcesSection` in `frontend/src/pages/SettingsPage.tsx`, with `PosterDBFields` and
-     `FanartTvdbFields` as sub-groups separated by a divider). Same two Save buttons/endpoints,
-     just grouped visually.
-  - **Action needed:** run `git status`/`git diff` to confirm this is still the pending diff, then
-    commit it (the user tags checkpoints — ask if this should be `checkpoint-7` or just a plain
-    commit; they've done both).
-
-## Pending user request: push to GitHub
-
-The user asked to commit and push to `https://github.com/bamcel/Postarr` (they typed it once with
-a capital P, once lowercase — same repo, GitHub repo paths aren't case-sensitive). **Blocked on
-auth**: `gh auth status` reports not logged in, and `git remote -v` is empty (no remote configured
-yet). Next steps once picking this back up:
-1. `gh auth login` (interactive — the user needs to do this themselves, or provide a token).
-2. `git remote add origin https://github.com/bamcel/Postarr.git`
-3. Commit pending work (see above), then `git push -u origin main`, and push tags if wanted
-   (`git push --tags`).
-Do **not** push without re-confirming with the user in the moment — pushing is a shared-state
-action requiring fresh explicit go-ahead per the safety rules, even though they asked before.
-
-## Checkpoint tag note
-
-`checkpoint-6` was **reverted** earlier this session (`git reset --hard checkpoint-5` on `main`,
-per user request) and is no longer an ancestor of `main` — it's a dangling, diverged tag. It still
-exists (nothing was deleted) in case that theming/glass-panel/vivid-backdrop work is ever wanted
-back, but don't assume it's part of current history. `checkpoint-1` through `checkpoint-5` are all
-real ancestors of the current `main`.
+- Repo is pushed to **`https://github.com/bamcel/postarr`** (`origin`). No open pending diff —
+  everything through the collections/MediUX/frosted-glass/Settings-polish work is committed.
+- **Standing instruction**: rebuild the container (`docker compose up -d --build`) after every
+  completed change, automatically, without being asked.
 
 ## What the app can do (verified live against the user's real Emby)
 
-Four artwork sources behind one panel per item: **ThePosterDB** (scraped, categorized search,
-title→set drill-down, empty-result filtering, set-size counts), **Fanart.tv**, **TheTVDB**, and
-**AniList** (looked up by the item's external ids, with a manual id/search override box). Apply
-to poster/background/logo on Plex/Jellyfin/Emby, including a **Custom** target picker (any season,
-Season 0/Specials included) and a **Manual** upload tab. Item detail shows the server's own clear-logo
-art over a full-bleed backdrop. Full endpoint list and setup steps are in README.md — don't
-duplicate that here, just note that all of it is live-verified, not just built.
+Five artwork sources behind one panel per item: **ThePosterDB** (scraped, categorized search,
+title→set drill-down, empty-result filtering, set-size counts), **Fanart.tv**, **TheTVDB**,
+**AniList**, and **MediUX** (looked up by the item's external ids; MediUX needs no
+account/key — see CLAUDE.md gotchas for its scraping quirks). Apply to poster/background/logo
+on Plex/Jellyfin/Emby, including a **Custom** target picker (any season, Season 0/Specials
+included, or — on a collection's page — any member movie/show) and a **Manual** upload tab.
+
+**Collections** (Emby/Jellyfin only so far): a virtual **Collections** library lists every
+collection on the server; each collection's own detail page shows its members with drill-through
+to their own full detail pages; a **Group Collections** toggle on regular library views replaces
+a collection's member movies/shows with one tile (built by hand — Emby's own
+`CollapseBoxSetItems` param doesn't work reliably, see CLAUDE.md). **Plex collections/grouping is
+code-complete but never live-verified** — there's no Plex server in this environment to test
+against; the Plex-side code follows the same pattern as Emby/Jellyfin but the exact field
+matching (Plex uses a `Collection` tag array, not clean parent-id lookup) may need a tweak once
+tested for real.
+
+Settings is tabbed (**Server Setup** / **Database Connection**); the sidebar and artwork panel
+use a frosted-glass look (blurred backdrop bleeding behind them, matching Emby's own UI).
+
+Full endpoint list and setup steps are in README.md — don't duplicate that here.
 
 ## Known live gotchas (still true, see CLAUDE.md for the full list)
 
 - The user's real Emby (`http://192.168.1.79:8096`) **goes offline/unreachable intermittently** —
   not a Postarr bug. If something "stops loading," check `/api/servers/{id}/test` before assuming
   code broke.
-- Preview screenshots in this environment have been **flaky all session** (frequent timeouts with
-  no console errors) — when that happens, verify via `preview_eval` DOM queries instead of fighting
-  the screenshot tool.
+- Preview screenshots in this environment are **flaky** (frequent timeouts/UnknownVizError with
+  no console errors) — when that happens, verify via `preview_eval` DOM queries / canvas pixel
+  sampling instead of fighting the screenshot tool.
 - Git Bash on Windows mangles `docker exec`/`docker cp` paths starting with `/` — wrap remote
   commands in `sh -c '...'` or set `MSYS_NO_PATHCONV=1`.
+- No backend caching on the collection-membership lookup (`_collapse_boxsets`) — every
+  `group_collections=true` library listing re-fetches all BoxSets + their children fresh from
+  Emby. User was told about this and said it's fine for now (their collection count is small).
+
+## Ideas not yet built (suggested, not requested)
+
+- A "missing artwork" report/dashboard for a library.
+- New-item detection (flag recently-added titles missing artwork).
+- Backend caching for the collection-membership lookup (offered, declined "for now").
 
 ## To resume
 
 1. `cd C:\Users\bamcel\Documents\AppDesign\Postarr`
-2. `git status` — confirm the diff described above is still there (or has been committed since).
+2. `git status` — should be clean; if not, confirm what's pending before assuming it's from a
+   prior session.
 3. `docker compose ps` — confirm the container is up; if not, `docker compose up -d --build`.
-4. Ask the user what's next — likely: commit the pending diff, then the GitHub push above.
+4. Ask the user what's next.

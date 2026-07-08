@@ -32,9 +32,11 @@ async def get_libraries(server_id: int) -> list[NormalizedLibrary]:
 
 
 @router.get("/libraries/{library_id}/items", response_model=list[NormalizedItem])
-async def get_items(server_id: int, library_id: str) -> list[NormalizedItem]:
+async def get_items(
+    server_id: int, library_id: str, group_collections: bool = True
+) -> list[NormalizedItem]:
     try:
-        return await _client(server_id).get_items(library_id)
+        return await _client(server_id).get_items(library_id, group_collections=group_collections)
     except MediaError as exc:
         raise _wrap(exc)
 

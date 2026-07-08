@@ -355,7 +355,16 @@ function PosterDBFields() {
       </h3>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Email / username">
+        <Field
+          label={
+            <>
+              Email / username{" "}
+              <a href="https://theposterdb.com/register" target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-white">
+                (create account ↗)
+              </a>
+            </>
+          }
+        >
           <input
             className={inputCls}
             value={email}
@@ -369,7 +378,7 @@ function PosterDBFields() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={configured ? "•••••• (leave blank to keep)" : ""}
+            placeholder={configured ? "••••••" : ""}
           />
         </Field>
       </div>
@@ -427,19 +436,17 @@ function FanartTvdbFields() {
 
   return (
     <div>
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-        <ImageIcon className="size-4 text-accent" /> Fanart.tv &amp; TheTVDB
-        <span className="text-xs font-normal text-faint">(optional — AniList needs no key)</span>
-      </h3>
-
-      <div className="space-y-4">
+      <div>
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <ImageIcon className="size-4 text-accent" /> Fanart.tv
+        </h3>
         <Field
           label={
             <>
               Fanart.tv API key{" "}
               {cfg?.fanart_configured && <ConfiguredTag />}{" "}
               <a href="https://fanart.tv/get-an-api-key/" target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-white">
-                (get a free key ↗)
+                (create account for free key ↗)
               </a>
             </>
           }
@@ -449,18 +456,33 @@ function FanartTvdbFields() {
             type="password"
             value={fanart}
             onChange={(e) => setFanart(e.target.value)}
-            placeholder={cfg?.fanart_configured ? "•••••• (leave blank to keep)" : "your Fanart.tv personal API key"}
+            placeholder={cfg?.fanart_configured ? "••••••" : "your Fanart.tv personal API key"}
           />
         </Field>
+      </div>
 
+      <div className="mt-6 border-t border-border pt-5">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <ImageIcon className="size-4 text-accent" /> TheTVDB
+        </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label={<>TheTVDB API key {cfg?.tvdb_configured && <ConfiguredTag />}</>}>
+          <Field
+            label={
+              <>
+                TheTVDB API key{" "}
+                {cfg?.tvdb_configured && <ConfiguredTag />}{" "}
+                <a href="https://thetvdb.com/dashboard/account/apikey" target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-white">
+                  (create account for free key ↗)
+                </a>
+              </>
+            }
+          >
             <input
               className={inputCls}
               type="password"
               value={tvdbKey}
               onChange={(e) => setTvdbKey(e.target.value)}
-              placeholder={cfg?.tvdb_configured ? "•••••• (leave blank to keep)" : "TheTVDB v4 API key"}
+              placeholder={cfg?.tvdb_configured ? "••••••" : "TheTVDB v4 API key"}
             />
           </Field>
           <Field label="TheTVDB subscriber PIN (optional)">
