@@ -38,6 +38,16 @@ const TPDB = "https://theposterdb.com";
 const looksLikeRef = (s: string) => /^\d+$/.test(s.trim()) || /https?:\/\//.test(s);
 const isTitleUrl = (u: string) => /\/posters\/\d+/.test(u);
 
+// Where the site icon links to: the pasted URL as-is, a bare id's poster
+// page, a search results page for a free-text term, or just the homepage.
+function externalTpdbUrl(query: string): string {
+  const q = query.trim();
+  if (!q) return TPDB;
+  if (/^https?:\/\//.test(q)) return q;
+  if (/^\d+$/.test(q)) return `${TPDB}/poster/${q}`;
+  return `${TPDB}/search?term=${encodeURIComponent(q)}`;
+}
+
 interface Props {
   serverId: number;
   item: ItemDetail;
@@ -204,8 +214,17 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search a title, or paste a poster/set URL…"
-          className="w-full rounded-lg border border-border bg-surface-2 py-2 pl-9 pr-3 text-sm outline-none focus:border-accent"
+          className="w-full rounded-lg border border-border bg-surface-2 py-2 pl-9 pr-9 text-sm outline-none focus:border-accent"
         />
+        <a
+          href={externalTpdbUrl(query)}
+          target="_blank"
+          rel="noreferrer"
+          title={query.trim() ? "Open on ThePosterDB" : "Search ThePosterDB"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-faint transition-colors hover:text-white"
+        >
+          <ExternalLink className="size-4" />
+        </a>
       </form>
 
       {busyLoad && (

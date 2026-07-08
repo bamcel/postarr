@@ -44,6 +44,34 @@ function idPlaceholder(provider: string, item: ItemDetail): string {
   return "id…";
 }
 
+// Where the site icon links to: the item's own page when the box holds an
+// id, otherwise the site itself (or its search page) for a manual look-up.
+function externalSiteUrl(provider: string, item: ItemDetail, idInput: string): string {
+  const id = idInput.trim();
+  if (provider === "fanart") {
+    if (!id) return "https://fanart.tv/";
+    return item.type === "movie" ? `https://fanart.tv/movie/${encodeURIComponent(id)}/` : `https://fanart.tv/series/${encodeURIComponent(id)}/`;
+  }
+  if (provider === "tvdb") {
+    if (!id) return "https://thetvdb.com/search";
+    return item.type === "movie"
+      ? `https://thetvdb.com/dereferrer/movie/${encodeURIComponent(id)}`
+      : `https://www.thetvdb.com/dereferrer/series/${encodeURIComponent(id)}`;
+  }
+  if (provider === "anilist") {
+    if (!id) return "https://anilist.co/search/anime";
+    return /^\d+$/.test(id)
+      ? `https://anilist.co/anime/${encodeURIComponent(id)}`
+      : `https://anilist.co/search/anime?search=${encodeURIComponent(id)}`;
+  }
+  if (provider === "mediux") {
+    if (!id) return "https://mediux.pro/";
+    const path = item.type === "movie" ? "movies" : item.type === "show" ? "shows" : "collections";
+    return `https://mediux.pro/${path}/${encodeURIComponent(id)}`;
+  }
+  return "#";
+}
+
 export default function ArtworkBrowser({
   provider,
   serverId,
@@ -125,8 +153,17 @@ export default function ArtworkBrowser({
         value={idInput}
         onChange={(e) => setIdInput(e.target.value)}
         placeholder={idPlaceholder(provider, item)}
-        className="w-full rounded-lg border border-border bg-surface-2 py-2 pl-9 pr-3 text-sm outline-none focus:border-accent"
+        className="w-full rounded-lg border border-border bg-surface-2 py-2 pl-9 pr-9 text-sm outline-none focus:border-accent"
       />
+      <a
+        href={externalSiteUrl(provider, item, idInput)}
+        target="_blank"
+        rel="noreferrer"
+        title={idInput.trim() ? `Open on ${providerLabel(provider)}` : `Search ${providerLabel(provider)}`}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-faint transition-colors hover:text-white"
+      >
+        <ExternalLink className="size-4" />
+      </a>
     </form>
   );
 
