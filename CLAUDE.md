@@ -52,7 +52,10 @@ There is no test suite; verification is done against a live media server.
   reverting never deletes the entry it reverted to, so history stays a true
   timeline, not a stack. The UI is a single **global** feed
   (`frontend/src/pages/HistoryPage.tsx`, linked from the sidebar) rather
-  than a per-item tab — `GET /api/history` returns that global feed when
+  than a per-item tab, grouped client-side into one tile per (item, target)
+  — the newest entry in each group is the tile's image; clicking it opens a
+  modal listing every version in that group with Revert — `GET /api/history`
+  returns that global feed when
   called without `item_id`; `POST /api/history/purge` triggers an immediate
   manual purge. `item_title` is denormalized onto each row (sent by the
   frontend at apply time, since it's already in hand there) specifically so

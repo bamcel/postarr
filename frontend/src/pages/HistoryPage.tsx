@@ -1,16 +1,17 @@
 // Global apply history: every image applied to the active server, newest
 // first, across every title — not just the one you happen to have open.
-// The first (most recent) entry for a given item+target is "Current"; any
-// earlier one can be reverted back to in one click.
+// Grouped by title+target into one tile each (the current image); click a
+// tile to open its full version history and revert to any earlier one.
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { History as HistoryIcon, Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { History as HistoryIcon, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { api } from "../api/client";
 import { useServers } from "../lib/serverContext";
 import { useToast } from "../lib/toast";
 import { EmptyState, Spinner } from "../components/ui";
+import type { ApplyHistoryEntry } from "../types";
 
 const TARGET_LABEL: Record<string, string> = {
   poster: "Poster",
@@ -97,21 +98,22 @@ export default function HistoryPage() {
   }
 
   const entries = q.data ?? [];
-  // Pure derivation (not a during-render mutation) so it's safe under
-  // StrictMode's double-render: the first entry seen per item+target is
-  // "Current", every later one for that pair is revertable.
-  const currentIds = useMemo(() => {
-    const seen = new Set<string>();
-    const current = new Set<number>();
+  // One tile per title+target: entries are already newest-first from the
+  // API, so each group's first element is "Current" and the rest are what
+  // the picker modal offers to revert to.
+  const groups = useMemo(() => {
+    const map = new Map<string, ApplyHistoryEntry[]>();
     for (const e of entries) {
       const key = `${e.item_id}:${e.target}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        current.add(e.id);
-      }
+      const arr = map.get(key);
+      if (arr) arr.push(e);
+      else map.set(key, [e]);
     }
-    return current;
+    return Array.from(map.values());
   }, [entries]);
+
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const activeGroup = activeKey ? groups.find((g) => `${g[0].item_id}:${g[0].target}` === activeKey) : null;
 
   async function revert(id: number) {
     setBusyId(id);
@@ -124,6 +126,7 @@ export default function HistoryPage() {
           queryClient.invalidateQueries({ queryKey: ["item-detail", serverId] }),
           queryClient.invalidateQueries({ queryKey: ["items", serverId] }),
         ]);
+        setActiveKey(null);
       }
     } catch (e) {
       toast.push("error", (e as Error).message);
@@ -202,59 +205,112 @@ export default function HistoryPage() {
           </EmptyState>
         )}
 
-        {entries.length > 0 && (
-          <div className="mx-auto max-w-3xl space-y-2">
-            {entries.map((e) => {
-              const isCurrent = currentIds.has(e.id);
+        {groups.length > 0 && (
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]">
+            {groups.map((group) => {
+              const current = group[0];
+              const key = `${current.item_id}:${current.target}`;
               return (
-                <div
-                  key={e.id}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-surface p-2"
-                >
-                  <button
-                    onClick={() => navigate(`/server/${e.server_id}/item/${e.item_id}`)}
-                    className="shrink-0 overflow-hidden rounded bg-surface-2"
-                    title="Open this title"
+                <button key={key} onClick={() => setActiveKey(key)} className="group select-none text-left">
+                  <div
+                    className={`relative overflow-hidden rounded-xl bg-surface-2 ring-1 ring-white/5 transition-all duration-150 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-accent ${
+                      current.target === "poster" ? "aspect-[2/3]" : "aspect-video"
+                    }`}
                   >
-                    <img
-                      src={e.thumb_url}
-                      alt=""
-                      className={`h-16 object-cover ${e.target === "poster" ? "aspect-[2/3]" : "aspect-video"}`}
-                    />
-                  </button>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">{e.item_title || e.item_id}</p>
+                    <img src={current.thumb_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    {group.length > 1 && (
+                      <span className="absolute right-2 top-2 grid min-w-6 place-items-center rounded-full bg-accent px-1.5 py-0.5 text-xs font-bold text-black shadow">
+                        {group.length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 px-0.5">
+                    <p className="truncate text-sm font-medium text-white/90">
+                      {current.item_title || current.item_id}
+                    </p>
                     <p className="truncate text-xs text-faint">
-                      {TARGET_LABEL[e.target] ?? e.target} · {providerLabel(e.provider)} ·{" "}
-                      {relativeTime(e.applied_at)}
+                      {TARGET_LABEL[current.target] ?? current.target} · {relativeTime(current.applied_at)}
                     </p>
                   </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-                  {isCurrent ? (
-                    <span className="shrink-0 rounded bg-accent/15 px-2 py-1 text-xs font-medium text-accent">
+      {/* Version picker: opened by clicking a tile above. */}
+      {activeGroup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setActiveKey(null)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-semibold">
+                  {activeGroup[0].item_title || activeGroup[0].item_id}
+                </h2>
+                <p className="text-xs text-faint">
+                  {TARGET_LABEL[activeGroup[0].target] ?? activeGroup[0].target} history
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => navigate(`/server/${activeGroup[0].server_id}/item/${activeGroup[0].item_id}`)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-white"
+                >
+                  Open title
+                </button>
+                <button
+                  onClick={() => setActiveKey(null)}
+                  className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {activeGroup.map((e, i) => (
+                <div key={e.id} className="rounded-lg border border-border bg-surface-2 p-2">
+                  <div
+                    className={`overflow-hidden rounded bg-base ${
+                      e.target === "poster" ? "aspect-[2/3]" : "aspect-video"
+                    }`}
+                  >
+                    <img src={e.thumb_url} alt="" className="h-full w-full object-cover" />
+                  </div>
+                  <p className="mt-1.5 truncate text-[11px] text-faint">{providerLabel(e.provider)}</p>
+                  <p className="truncate text-[10px] text-faint">{relativeTime(e.applied_at)}</p>
+                  {i === 0 ? (
+                    <span className="mt-1 block rounded bg-accent/15 px-1.5 py-0.5 text-center text-[10px] font-medium text-accent">
                       Current
                     </span>
                   ) : (
                     <button
                       onClick={() => revert(e.id)}
                       disabled={busyId === e.id}
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-white disabled:opacity-60"
+                      className="mt-1 flex w-full items-center justify-center gap-1 rounded bg-elevated px-1.5 py-1 text-[11px] font-medium text-muted transition-colors hover:text-white disabled:opacity-60"
                     >
                       {busyId === e.id ? (
-                        <Loader2 className="size-3.5 animate-spin" />
+                        <Loader2 className="size-3 animate-spin" />
                       ) : (
-                        <RotateCcw className="size-3.5" />
+                        <RotateCcw className="size-3" />
                       )}
                       Revert
                     </button>
                   )}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

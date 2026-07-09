@@ -41,7 +41,14 @@ server, newest first, with **Revert** — because a global "what did I just do" 
 useful than having to remember which title to check. `apply_history` gained an `item_title`
 column (denormalized — the frontend already has the title in hand at apply time, so the global
 feed doesn't need a media-server round trip per row) via a real `db._migrate()` ALTER TABLE
-since the table already existed on disk.
+since the table already existed on disk. **Then refined again same session**: the global feed
+first shipped as a flat row-per-entry list (so the same title could appear many times in a row),
+then changed to a grouped grid — one poster tile per (item, target), showing the current image
+with a count badge, click to open a modal listing every version with Revert. Verified live:
+grouping 4 entries for one real item ("3:10 to Yuma") correctly showed a single tile with a "4"
+badge; clicking it opened a modal with all 4 thumbnails + 1 "Current" tag + 3 Revert buttons
+(confirmed via computed styles, not the screenshot tool — see gotcha below); reverting from
+inside the modal closed it and created a fresh entry as expected.
 
 **Retention (added right after, same session)**: the original per-(item,target) cap of 5 was
 replaced with one **global hard cap of 50 rows** (oldest pruned first, DB row + file both),

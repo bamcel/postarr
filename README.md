@@ -29,10 +29,11 @@ a bad pick is one click to undo.
   — no more scrolling past every "John Wick" sequel individually. Live-verified on Emby/Jellyfin;
   the Plex-side code follows the same shape but hasn't been run against a real Plex server.
 - **Apply history + revert**: every image you apply — from any provider or a manual upload —
-  is remembered (up to 50 entries, globally). A global **History** page (sidebar) lists
-  everything applied across the server, newest first, with a one-click **Revert** — so a bad
-  pick costs nothing and you don't have to remember which title you last touched. Retention is
-  configurable right there: an optional auto-purge after N days, or a manual **Purge now**.
+  is remembered (up to 50 entries, globally). A global **History** page (sidebar) shows one tile
+  per title+target, newest first; click a tile to see every version and **Revert** to any of
+  them — so a bad pick costs nothing and you don't have to remember which title you last
+  touched. Retention is configurable right there: an optional auto-purge after N days, or a
+  manual **Purge now**.
 - **Apply anywhere**: set any image as the poster, background, or clear logo — or use
   **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season, or a
   poster from a collection's page directly onto one of its member movies without leaving the
@@ -190,10 +191,10 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
 5. On any image, **Custom** lets you choose exactly where it lands — poster, background,
    logo, a specific season, or — on a collection's page — any of its member movies/shows,
    without leaving the page.
-6. **History** (sidebar): a global feed of everything applied to the active server, newest
-   first — jump to any title from there, or **Revert** it back to an earlier image. Up to 50
-   entries are always kept; set an auto-purge age (in days) or hit **Purge now** to trim it
-   further.
+6. **History** (sidebar): one tile per title+target across the active server, newest first —
+   click a tile to see every version applied to it, jump to the title, or **Revert** to an
+   earlier image. Up to 50 entries are always kept; set an auto-purge age (in days) or hit
+   **Purge now** to trim it further.
 
 ## API
 
