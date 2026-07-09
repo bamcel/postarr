@@ -60,19 +60,27 @@ export default function HistoryPage() {
     enabled: serverId != null,
   });
 
-  // Retention: a global 50-entry cap always applies server-side; this is the
-  // optional extra day-based cutoff on top of it.
+  // Retention: both are user-configurable — a global entry-count cap
+  // (always enforced) and an optional extra day-based cutoff on top of it.
   const settingsQ = useQuery({ queryKey: ["history-settings"], queryFn: api.getHistorySettings });
   const [purgeDaysInput, setPurgeDaysInput] = useState("");
+  const [maxEntriesInput, setMaxEntriesInput] = useState("");
   useEffect(() => {
-    if (settingsQ.data) setPurgeDaysInput(settingsQ.data.purge_days ? String(settingsQ.data.purge_days) : "");
+    if (!settingsQ.data) return;
+    setPurgeDaysInput(settingsQ.data.purge_days ? String(settingsQ.data.purge_days) : "");
+    setMaxEntriesInput(String(settingsQ.data.max_entries));
   }, [settingsQ.data]);
 
   const saveSettingsMut = useMutation({
-    mutationFn: () => api.setHistorySettings(Number(purgeDaysInput) || 0),
+    mutationFn: () =>
+      api.setHistorySettings({
+        purge_days: Number(purgeDaysInput) || 0,
+        max_entries: Math.max(1, Number(maxEntriesInput) || 50),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["history-settings"] });
-      toast.push("success", "Retention setting saved.");
+      queryClient.invalidateQueries({ queryKey: ["apply-history-global", serverId] });
+      toast.push("success", "Retention settings saved.");
     },
     onError: (e: Error) => toast.push("error", e.message),
   });
@@ -157,11 +165,22 @@ export default function HistoryPage() {
             </h1>
             <p className="text-sm text-faint">
               Everything applied to {selectedServer.name}, most recent first — revert any of them
-              in one click. Up to 50 entries are always kept.
+              in one click. Up to {settingsQ.data?.max_entries ?? 50} entries are kept.
             </p>
           </div>
 
           <div className="flex items-end gap-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Keep up to (entries)</span>
+              <input
+                type="number"
+                min={1}
+                value={maxEntriesInput}
+                onChange={(e) => setMaxEntriesInput(e.target.value)}
+                placeholder="50"
+                className="w-28 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">
                 Auto-purge after (days, 0 = off)

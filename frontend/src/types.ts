@@ -154,6 +154,7 @@ export interface ApplyHistoryEntry {
 
 export interface HistorySettings {
   purge_days: number;
+  max_entries: number;
 }
 
 export interface HistoryPurgeResult {

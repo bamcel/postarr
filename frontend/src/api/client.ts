@@ -163,10 +163,10 @@ export const api = {
   revertHistory: (historyId: number) =>
     request<ApplyResult>(`/history/${historyId}/revert`, { method: "POST" }),
   getHistorySettings: () => request<HistorySettings>("/history/settings"),
-  setHistorySettings: (purgeDays: number) =>
+  setHistorySettings: (settings: HistorySettings) =>
     request<HistorySettings>("/history/settings", {
       method: "PUT",
-      body: JSON.stringify({ purge_days: purgeDays }),
+      body: JSON.stringify(settings),
     }),
   purgeHistory: (days?: number) =>
     request<HistoryPurgeResult>(`/history/purge${days != null ? `?days=${days}` : ""}`, { method: "POST" }),

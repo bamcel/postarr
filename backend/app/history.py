@@ -10,10 +10,12 @@ provider URLs can go stale (ThePosterDB needs its authenticated session,
 others may rate-limit, move, or require a Referer) — the bytes we already
 downloaded to apply them are the one thing guaranteed to still be good.
 
-Two independent caps keep this from growing forever: a hard ceiling on the
-total row count (``GLOBAL_HISTORY_LIMIT``, always enforced), and an optional
-user-configured max age in days (``settings.history_purge_days``, 0 =
-disabled) swept on every new apply.
+Two independent, user-configurable caps keep this from growing forever: a
+global row-count ceiling (``settings.history_max_entries``, always enforced
+on insert — oldest rows + files pruned first once exceeded) and an optional
+max age in days (``settings.history_purge_days``, 0 = disabled — only
+entries *older than* this are ever touched, everything newer is left alone)
+swept on every new apply.
 """
 
 from __future__ import annotations
@@ -26,7 +28,8 @@ from . import db
 from .config import DATA_DIR
 
 HISTORY_DIR = DATA_DIR / "history"
-GLOBAL_HISTORY_LIMIT = 50
+DEFAULT_MAX_ENTRIES = 50
+MAX_ENTRIES_SETTING = "history_max_entries"
 PURGE_DAYS_SETTING = "history_purge_days"
 
 _EXT_BY_CONTENT_TYPE = {
@@ -53,11 +56,20 @@ def record(
     path.write_bytes(data)
     db.insert_apply_history(server_id, item_id, target, str(path), content_type, provider, item_title)
 
-    _delete_files(db.prune_apply_history_global(keep=GLOBAL_HISTORY_LIMIT))
+    _delete_files(db.prune_apply_history_global(keep=get_max_entries()))
 
     days = get_purge_days()
     if days > 0:
         _delete_files(db.purge_apply_history_older_than(days))
+
+
+def get_max_entries() -> int:
+    raw = db.get_setting(MAX_ENTRIES_SETTING)
+    return int(raw) if raw.isdigit() else DEFAULT_MAX_ENTRIES
+
+
+def set_max_entries(count: int) -> None:
+    db.set_setting(MAX_ENTRIES_SETTING, str(max(1, count)))
 
 
 def get_purge_days() -> int:
@@ -67,6 +79,15 @@ def get_purge_days() -> int:
 
 def set_purge_days(days: int) -> None:
     db.set_setting(PURGE_DAYS_SETTING, str(max(0, days)))
+
+
+def enforce_max_entries() -> int:
+    """Immediately prune to the current max_entries setting (rather than
+    waiting for the next apply) — called right after the setting changes so
+    lowering it takes effect right away. Returns how many were removed."""
+    stale = db.prune_apply_history_global(keep=get_max_entries())
+    _delete_files(stale)
+    return len(stale)
 
 
 def purge_now(days: Optional[int] = None) -> int:

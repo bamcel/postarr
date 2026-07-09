@@ -43,10 +43,13 @@ There is no test suite; verification is done against a live media server.
   successful `set_image` call, from any of the two apply endpoints
   (`/posterdb/apply`, `/artwork/upload`), also calls `history.record(...)`,
   which writes the bytes to `data/history/` and indexes them in the
-  `apply_history` SQLite table. Two independent caps: a hard global ceiling
-  (`GLOBAL_HISTORY_LIMIT = 50`, always enforced on insert, oldest rows +
-  files pruned first — not per-item, a single shared budget) and an optional
-  user-set max age in days (`history_purge_days` setting, 0 = disabled,
+  `apply_history` SQLite table. Two independent, **user-configurable** caps:
+  a global entry-count ceiling (`history_max_entries` setting, default 50,
+  always enforced on insert — oldest rows + files pruned first, not
+  per-item, a single shared budget; lowering it in Settings also prunes
+  immediately via `history.enforce_max_entries()`, not just on the next
+  apply) and an optional max age in days (`history_purge_days` setting, 0 =
+  disabled — only entries *older than* the threshold are ever touched,
   swept opportunistically on every `record()` call, no scheduler needed).
   Revert re-applies those same bytes and records that as a new entry —
   reverting never deletes the entry it reverted to, so history stays a true

@@ -251,9 +251,12 @@ class ApplyHistoryEntry(BaseModel):
 
 
 class HistorySettings(BaseModel):
-    # Max age in days before an entry is auto-purged; 0 = disabled (only the
-    # global 50-entry cap applies).
+    # Max age in days before an entry is auto-purged (only entries OLDER
+    # than this are ever touched); 0 = disabled, only max_entries applies.
     purge_days: int = 0
+    # Hard ceiling on total history rows, globally — oldest pruned first
+    # once exceeded.
+    max_entries: int = 50
 
 
 class HistoryPurgeResult(BaseModel):

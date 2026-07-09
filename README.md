@@ -29,10 +29,11 @@ a bad pick is one click to undo.
   — no more scrolling past every "John Wick" sequel individually. Live-verified on Emby/Jellyfin;
   the Plex-side code follows the same shape but hasn't been run against a real Plex server.
 - **Apply history + revert**: every image you apply — from any provider or a manual upload —
-  is remembered (up to 50 entries, globally). A global **History** page (sidebar) shows one tile
-  per title+target, newest first; click a tile to see every version and **Revert** to any of
-  them — so a bad pick costs nothing and you don't have to remember which title you last
-  touched. Retention is configurable right there: an optional auto-purge after N days, or a
+  is remembered (up to 50 entries by default, globally — configurable). A global **History**
+  page (sidebar) shows one tile per title+target, newest first; click a tile to see every
+  version and **Revert** to any of them — so a bad pick costs nothing and you don't have to
+  remember which title you last touched. Retention is configurable right there: how many
+  entries to keep, an optional auto-purge for anything older than N days, or a
   manual **Purge now**.
 - **Apply anywhere**: set any image as the poster, background, or clear logo — or use
   **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season, or a
@@ -193,8 +194,9 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
    without leaving the page.
 6. **History** (sidebar): one tile per title+target across the active server, newest first —
    click a tile to see every version applied to it, jump to the title, or **Revert** to an
-   earlier image. Up to 50 entries are always kept; set an auto-purge age (in days) or hit
-   **Purge now** to trim it further.
+   earlier image. Set how many entries to keep (50 by default) and an optional auto-purge age
+   in days — entries *older than* that are removed, everything newer is left alone regardless
+   of count — or hit **Purge now** to trim it immediately.
 
 ## API
 
@@ -221,7 +223,7 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | `GET` | `/api/history?server_id=[&item_id=&target=&limit=]` | apply history — global feed when `item_id` is omitted |
 | `GET` | `/api/history/{id}/image` | a history entry's stored image |
 | `POST` | `/api/history/{id}/revert` | re-apply a history entry as current |
-| `GET/PUT` | `/api/history/settings` | auto-purge age in days (0 = disabled) |
+| `GET/PUT` | `/api/history/settings` | `max_entries` (global cap) and `purge_days` (0 = disabled) |
 | `POST` | `/api/history/purge?days=` | purge now; omit `days` to use the saved setting, `0` purges everything |
 
 ## License

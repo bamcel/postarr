@@ -51,15 +51,22 @@ badge; clicking it opened a modal with all 4 thumbnails + 1 "Current" tag + 3 Re
 inside the modal closed it and created a fresh entry as expected.
 
 **Retention (added right after, same session)**: the original per-(item,target) cap of 5 was
-replaced with one **global hard cap of 50 rows** (oldest pruned first, DB row + file both),
-plus an optional **user-configurable auto-purge age in days** (0 = disabled, swept on every
-apply) and a manual **Purge now** button — both live at the top of the History page, backed by
-`GET/PUT /api/history/settings` and `POST /api/history/purge?days=`. Verified live: settings
-save/load round-trip, a no-op purge (large day threshold, correctly purged 0), and a full purge
-(days=0) that correctly emptied both the DB table *and* deleted every file on disk (`du` showed
-`/data/history` back to 4K). Real disk usage checked live too: ~15MB across 7 entries at the
-time, all full-resolution (2-5MB each) — the 50-cap now bounds worst case to roughly 100-250MB
-rather than unbounded growth.
+replaced with one **global hard cap** (oldest pruned first, DB row + file both), plus an
+optional auto-purge age in days (0 = disabled, swept on every apply) and a manual **Purge now**
+button — all live at the top of the History page, backed by `GET/PUT /api/history/settings` and
+`POST /api/history/purge?days=`. **Then made the entry cap itself user-configurable too**
+(originally hardcoded `GLOBAL_HISTORY_LIMIT = 50`, now `history_max_entries` setting, same
+pattern as `history_purge_days`) — the user asked for this explicitly rather than a fixed
+number. Saving a *lowered* cap prunes immediately (`history.enforce_max_entries()` called
+right after the setting saves), not just on the next apply — verified live: set `max_entries=2`
+against 5 existing rows, confirmed it dropped to exactly the 2 newest immediately, then restored
+to 50. Also confirmed (per explicit user clarification) that auto-purge-by-days only ever
+touches entries *older than* the threshold — never a factor of count — which was already how
+`db.purge_apply_history_older_than` worked, no code change needed there, just confirmed correct.
+Verified live: settings save/load round-trip, a no-op purge (large day threshold, correctly
+purged 0), and a full purge (days=0) that correctly emptied both the DB table *and* deleted
+every file on disk (`du` showed `/data/history` back to 4K). Real disk usage checked live too:
+~15MB across 7 entries at the time, all full-resolution (2-5MB each).
 
 Along the way, verified the original apply/revert round trip twice more (re-apply true original
 → apply a different poster → revert → byte-for-byte match against the real Emby item 84973,

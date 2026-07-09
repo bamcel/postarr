@@ -16,13 +16,15 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 
 @router.get("/settings", response_model=HistorySettings)
 async def get_settings() -> HistorySettings:
-    return HistorySettings(purge_days=history.get_purge_days())
+    return HistorySettings(purge_days=history.get_purge_days(), max_entries=history.get_max_entries())
 
 
 @router.put("/settings", response_model=HistorySettings)
 async def update_settings(payload: HistorySettings) -> HistorySettings:
     history.set_purge_days(payload.purge_days)
-    return HistorySettings(purge_days=history.get_purge_days())
+    history.set_max_entries(payload.max_entries)
+    history.enforce_max_entries()  # apply a lowered cap immediately, not on the next apply
+    return HistorySettings(purge_days=history.get_purge_days(), max_entries=history.get_max_entries())
 
 
 @router.post("/purge", response_model=HistoryPurgeResult)
