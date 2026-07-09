@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS apply_history (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     server_id    INTEGER NOT NULL,
     item_id      TEXT    NOT NULL,
+    item_title   TEXT    NOT NULL DEFAULT '',
     target       TEXT    NOT NULL,
     file_path    TEXT    NOT NULL,
     content_type TEXT    NOT NULL,
@@ -48,6 +49,8 @@ CREATE TABLE IF NOT EXISTS apply_history (
 );
 CREATE INDEX IF NOT EXISTS idx_apply_history_item
     ON apply_history (server_id, item_id, target, applied_at DESC);
+CREATE INDEX IF NOT EXISTS idx_apply_history_recent
+    ON apply_history (applied_at DESC);
 """
 
 # Keys in the ``settings`` table whose values are encrypted at rest.
@@ -74,6 +77,19 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive schema changes for databases created before a column existed.
+
+    CREATE TABLE IF NOT EXISTS in SCHEMA only creates a table the first time
+    — an existing apply_history table from before item_title was added needs
+    an explicit ALTER TABLE to pick it up.
+    """
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(apply_history)")}
+    if "item_title" not in cols:
+        conn.execute("ALTER TABLE apply_history ADD COLUMN item_title TEXT NOT NULL DEFAULT ''")
 
 
 # ---------------------------------------------------------------------------
@@ -195,24 +211,48 @@ def set_setting(key: str, value: str) -> None:
 # ---------------------------------------------------------------------------
 
 def insert_apply_history(
-    server_id: int, item_id: str, target: str, file_path: str, content_type: str, provider: str
+    server_id: int,
+    item_id: str,
+    target: str,
+    file_path: str,
+    content_type: str,
+    provider: str,
+    item_title: str = "",
 ) -> int:
     with get_conn() as conn:
         cur = conn.execute(
-            """INSERT INTO apply_history (server_id, item_id, target, file_path, content_type, provider)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (server_id, item_id, target, file_path, content_type, provider),
+            """INSERT INTO apply_history
+               (server_id, item_id, item_title, target, file_path, content_type, provider)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (server_id, item_id, item_title, target, file_path, content_type, provider),
         )
         return cur.lastrowid  # type: ignore[return-value]
 
 
-def list_apply_history(server_id: int, item_id: str, target: Optional[str] = None) -> list[dict[str, Any]]:
-    query = "SELECT * FROM apply_history WHERE server_id = ? AND item_id = ?"
-    params: list[Any] = [server_id, item_id]
+def list_apply_history(
+    server_id: Optional[int] = None,
+    item_id: Optional[str] = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict[str, Any]]:
+    """With ``item_id`` omitted, lists the most recent applies across
+    ``server_id`` (or across every server, if that's omitted too) — the
+    global history view."""
+    query = "SELECT * FROM apply_history WHERE 1 = 1"
+    params: list[Any] = []
+    if server_id is not None:
+        query += " AND server_id = ?"
+        params.append(server_id)
+    if item_id is not None:
+        query += " AND item_id = ?"
+        params.append(item_id)
     if target:
         query += " AND target = ?"
         params.append(target)
     query += " ORDER BY applied_at DESC, id DESC"
+    if limit:
+        query += " LIMIT ?"
+        params.append(limit)
     with get_conn() as conn:
         rows = conn.execute(query, params).fetchall()
     return [dict(r) for r in rows]

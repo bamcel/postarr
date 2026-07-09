@@ -142,6 +142,10 @@ export interface ApplyResult {
 
 export interface ApplyHistoryEntry {
   id: number;
+  server_id: number;
+  server_name: string;
+  item_id: string;
+  item_title: string;
   target: ImageTarget;
   provider: string;
   applied_at: string;

@@ -29,8 +29,9 @@ a bad pick is one click to undo.
   — no more scrolling past every "John Wick" sequel individually. Live-verified on Emby/Jellyfin;
   the Plex-side code follows the same shape but hasn't been run against a real Plex server.
 - **Apply history + revert**: every image you apply — from any provider or a manual upload —
-  is remembered (last 5 per poster/background/logo). The **History** tab shows what's been
-  applied to a title with a one-click **Revert**, so a bad pick costs nothing.
+  is remembered (last 5 per title+poster/background/logo). A global **History** page (sidebar)
+  lists everything applied across the server, newest first, with a one-click **Revert** — so a
+  bad pick costs nothing and you don't have to remember which title you last touched.
 - **Apply anywhere**: set any image as the poster, background, or clear logo — or use
   **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season, or a
   poster from a collection's page directly onto one of its member movies without leaving the
@@ -188,8 +189,8 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
 5. On any image, **Custom** lets you choose exactly where it lands — poster, background,
    logo, a specific season, or — on a collection's page — any of its member movies/shows,
    without leaving the page.
-6. **History tab**: see the last few images applied to this title (per poster/background/logo)
-   and **Revert** to any of them in one click.
+6. **History** (sidebar): a global feed of everything applied to the active server, newest
+   first — jump to any title from there, or **Revert** it back to an earlier image.
 
 ## API
 
@@ -213,7 +214,7 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | `GET/PUT` | `/api/artwork/settings` | Fanart/TVDB API keys |
 | `GET` | `/api/artwork/mediux/image?url=` | cached MediUX thumbnail proxy |
 | `POST` | `/api/artwork/upload` | apply a user-uploaded image file |
-| `GET` | `/api/history?server_id=&item_id=[&target=]` | apply history for a title |
+| `GET` | `/api/history?server_id=[&item_id=&target=&limit=]` | apply history — global feed when `item_id` is omitted |
 | `GET` | `/api/history/{id}/image` | a history entry's stored image |
 | `POST` | `/api/history/{id}/revert` | re-apply a history entry as current |
 

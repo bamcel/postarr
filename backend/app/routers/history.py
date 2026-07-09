@@ -16,12 +16,23 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 
 @router.get("", response_model=list[ApplyHistoryEntry])
 async def list_history(
-    server_id: int = Query(...), item_id: str = Query(...), target: Optional[str] = Query(None)
+    server_id: Optional[int] = Query(None),
+    item_id: Optional[str] = Query(None),
+    target: Optional[str] = Query(None),
+    limit: Optional[int] = Query(None, description="Caps results; only meaningful without item_id"),
 ) -> list[ApplyHistoryEntry]:
-    rows = history.list_for_item(server_id, item_id, target)
+    """With ``item_id`` omitted this is the global history feed — every
+    apply across ``server_id`` (or every server, if that's omitted too),
+    newest first."""
+    rows = history.list_recent(server_id, item_id, target, limit)
+    server_names = {s["id"]: s["name"] for s in db.list_servers()}
     return [
         ApplyHistoryEntry(
             id=r["id"],
+            server_id=r["server_id"],
+            server_name=server_names.get(r["server_id"], ""),
+            item_id=r["item_id"],
+            item_title=r["item_title"],
             target=r["target"],
             provider=r["provider"],
             applied_at=r["applied_at"],
@@ -57,5 +68,13 @@ async def revert(history_id: int) -> ApplyResult:
 
     # Reverting is itself a new apply — recorded fresh rather than mutating
     # the entry reverted to, so the history stays a true timeline.
-    history.record(entry["server_id"], entry["item_id"], entry["target"], data, content_type, entry["provider"])
+    history.record(
+        entry["server_id"],
+        entry["item_id"],
+        entry["target"],
+        data,
+        content_type,
+        entry["provider"],
+        entry["item_title"],
+    )
     return ApplyResult(ok=True, message=f"Reverted {entry['target']}.")

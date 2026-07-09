@@ -33,19 +33,28 @@ Emby/Jellyfin only** — `PlexClient._collapse_collections` mirrors the Jellyfin
 there's no Plex server in this environment, so it's never actually been run. If a Plex user
 reports it's off, that's the first place to look.
 
-**Apply history + revert**: every successful apply (any provider, or a manual upload) is now
-recorded — bytes saved to `data/history/`, indexed in a new `apply_history` SQLite table, last 5
-kept per server+item+target. A new **History** tab in the artwork panel shows them with a
-one-click **Revert**. Verified live end-to-end against the real Emby (item 84973, "3:10 to
-Yuma"): re-applied its true original poster bytes (zero visual change, history row 1), applied a
-different borrowed poster (history row 2), confirmed both showed up correctly with row 2 marked
-"Current", reverted to row 1 via the real UI button, and confirmed byte-for-byte that the live
-poster matched the true original again. **Caught a real bug during this test**: with 3 history
-rows present, the *first* "Revert" button in the DOM belongs to the second-most-recent entry, not
-the original — clicking it left the real item on the wrong (borrowed test) image for a few
-minutes before it was caught by comparing bytes and fixed by reverting to the correct entry. Not
-a code bug, just a reminder to double-check *which* entry a revert click targets when multiple
-exist, especially when scripting a test rather than clicking by eye.
+**Apply history + revert**: every successful apply (any provider, or a manual upload) is
+recorded — bytes saved to `data/history/`, indexed in `apply_history` SQLite table, last 5 kept
+per server+item+target. Originally shipped as a per-item "History" tab in the artwork panel, then
+**pivoted the same session** to a single **global** feed instead (`/history` in the sidebar,
+`HistoryPage.tsx`) — every apply across the whole server, newest first, with **Revert** — because
+a global "what did I just do" view is more useful than having to remember which title to check.
+`apply_history` gained an `item_title` column (denormalized — the frontend already has the title
+in hand at apply time, sent along with `ApplyRequest`/`/artwork/upload`, so the global feed
+doesn't need a media-server round trip per row) with a real `db._migrate()` ALTER TABLE since the
+table already existed on disk from the per-item version. Verified live end-to-end against the
+real Emby (item 84973, "3:10 to Yuma"): re-applied its true original poster bytes (zero visual
+change), applied a different borrowed poster, reverted back via the real UI button, confirmed
+byte-for-byte the live poster matched the true original — then re-verified again after the pivot
+with `item_title` included, confirming it threads through correctly and shows in the global feed
+while old (pre-migration) rows correctly fall back to displaying their raw item id. **Caught two
+real things while testing, both about the 5-per-target prune, not bugs**: (1) clicking the first
+"Revert" button in the DOM isn't necessarily the *original* entry if 3+ rows exist — it's
+whichever is second-most-recent — briefly left the real item on the wrong image before being
+caught by comparing bytes and fixed; (2) aggressive re-testing on the same title eventually prunes
+old rows (including their files) past the 5-row cap, so a reference entry created early in a test
+session can silently disappear later — not a bug, just something to expect when scripting repeat
+applies to the same title.
 
 Settings is tabbed (**Server Setup** / **Database Connection**); the sidebar and artwork panel
 use a frosted-glass look (blurred backdrop bleeding behind them, matching Emby's own UI).

@@ -43,14 +43,22 @@ export default function ManualUpload({ serverId, item }: { serverId: number; ite
     }
     setBusy(true);
     try {
+      const itemTitle = `${item.title} — ${target.label}`;
       const res = file
-        ? await api.applyUpload({ server_id: serverId, item_id: target.itemId, target: target.target, file })
+        ? await api.applyUpload({
+            server_id: serverId,
+            item_id: target.itemId,
+            target: target.target,
+            file,
+            item_title: itemTitle,
+          })
         : await api.applyPoster({
             server_id: serverId,
             item_id: target.itemId,
             target: target.target,
             provider: "url",
             download_url: url.trim(),
+            item_title: itemTitle,
           });
       toast.push(res.ok ? "success" : "error", res.message);
       if (res.ok) {

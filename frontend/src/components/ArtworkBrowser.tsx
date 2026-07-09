@@ -122,7 +122,13 @@ export default function ArtworkBrowser({
   const seasonByNumber = (n?: number | null) =>
     n == null ? undefined : item.seasons.find((s) => s.index === n);
 
-  async function apply(art: ArtworkItem, target: ImageTarget, targetId: string, key: string) {
+  async function apply(
+    art: ArtworkItem,
+    target: ImageTarget,
+    targetId: string,
+    key: string,
+    titleOverride?: string,
+  ) {
     setBusyKey(key);
     try {
       const res = await api.applyPoster({
@@ -131,6 +137,7 @@ export default function ArtworkBrowser({
         target,
         provider: art.provider,
         download_url: art.download_url,
+        item_title: titleOverride ?? item.title,
       });
       toast.push(res.ok ? "success" : "error", res.message);
       if (res.ok) {
@@ -233,7 +240,7 @@ export default function ArtworkBrowser({
                       <ApplyBtn
                         label={`→ S${art.season_number}`}
                         busy={busyKey === `s-${art.id}`}
-                        onClick={() => apply(art, "poster", season.id, `s-${art.id}`)}
+                        onClick={() => apply(art, "poster", season.id, `s-${art.id}`, `${item.title} — ${season.title}`)}
                       />
                     ) : art.applyable && art.type === "poster" ? (
                       <ApplyBtn
@@ -269,7 +276,7 @@ export default function ArtworkBrowser({
                         item={item}
                         busy={busyKey?.includes(art.id) ?? false}
                         onPick={(target, targetId, label) =>
-                          apply(art, target, targetId, `c-${art.id}-${targetId}-${target}-${label}`)
+                          apply(art, target, targetId, `c-${art.id}-${targetId}-${target}-${label}`, `${item.title} — ${label}`)
                         }
                       />
                     )}

@@ -223,6 +223,10 @@ class ApplyRequest(BaseModel):
     # ("posterdb" uses the authenticated TPDb session; others are public URLs).
     provider: str = "posterdb"
     download_url: str  # the full image URL to fetch
+    # The frontend already has this in hand (it's the item/season/member the
+    # apply panel is open on) — stored on the history row so a global history
+    # feed can show it without re-fetching from the media server.
+    item_title: str = ""
 
 
 class ApplyResult(BaseModel):
@@ -236,6 +240,10 @@ class ApplyResult(BaseModel):
 
 class ApplyHistoryEntry(BaseModel):
     id: int
+    server_id: int
+    server_name: str = ""
+    item_id: str
+    item_title: str = ""
     target: ImageTarget
     provider: str
     applied_at: str

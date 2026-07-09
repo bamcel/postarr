@@ -11,7 +11,6 @@ import type { ItemDetail } from "../types";
 import PosterDBBody from "./PosterDBPanel";
 import ArtworkBrowser from "./ArtworkBrowser";
 import ManualUpload from "./ManualUpload";
-import HistoryPanel from "./HistoryPanel";
 
 interface Props {
   serverId: number;
@@ -23,13 +22,13 @@ export default function ArtworkPanel({ serverId, item, prefill }: Props) {
   const [provider, setProvider] = useState("posterdb");
   const providersQ = useQuery({ queryKey: ["artwork-providers"], queryFn: api.artworkProviders });
 
-  // ThePosterDB first, the API providers from the backend, then Manual upload
-  // and History (what's actually been applied to this item, with revert).
+  // ThePosterDB first, the API providers from the backend, then Manual upload.
+  // Apply history now lives on its own global page (see Layout's "History" nav
+  // link) rather than a per-item tab here.
   const tabs = [
     { name: "posterdb", label: "ThePosterDB", configured: true, needs_key: false },
     ...(providersQ.data ?? []),
     { name: "manual", label: "Manual", configured: true, needs_key: false },
-    { name: "history", label: "History", configured: true, needs_key: false },
   ];
 
   return (
@@ -62,8 +61,6 @@ export default function ArtworkPanel({ serverId, item, prefill }: Props) {
           <PosterDBBody serverId={serverId} item={item} prefill={prefill} />
         ) : provider === "manual" ? (
           <ManualUpload serverId={serverId} item={item} />
-        ) : provider === "history" ? (
-          <HistoryPanel serverId={serverId} item={item} />
         ) : (
           <ArtworkBrowser provider={provider} serverId={serverId} item={item} />
         )}

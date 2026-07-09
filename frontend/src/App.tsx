@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import LibraryPage from "./pages/LibraryPage";
 import ItemDetailPage from "./pages/ItemDetailPage";
 import SettingsPage from "./pages/SettingsPage";
+import HistoryPage from "./pages/HistoryPage";
 import { ToastProvider } from "./lib/toast";
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<LibraryPage />} />
+          <Route path="/history" element={<HistoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/server/:serverId/item/:itemId" element={<ItemDetailPage />} />
         </Route>

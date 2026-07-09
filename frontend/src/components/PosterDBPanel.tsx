@@ -125,6 +125,7 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
     target: ImageTarget,
     targetItemId: string,
     key: string,
+    titleOverride?: string,
   ) {
     setBusyKey(key);
     try {
@@ -133,6 +134,7 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
         item_id: targetItemId,
         target,
         download_url: asset.download_url,
+        item_title: titleOverride ?? item.title,
       });
       toast.push(res.ok ? "success" : "error", res.message);
       if (res.ok) await refreshArtwork();
@@ -154,6 +156,7 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
           item_id: item.id,
           target: "poster",
           download_url: main.download_url,
+          item_title: item.title,
         });
         if (r.ok) applied++;
       }
@@ -166,6 +169,7 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
             item_id: season.id,
             target: "poster",
             download_url: p.download_url,
+            item_title: `${item.title} — ${season.title}`,
           });
           if (r.ok) applied++;
         } else if (p.kind === "background") {
@@ -174,6 +178,7 @@ export default function PosterDBBody({ serverId, item, prefill }: Props) {
             item_id: item.id,
             target: "background",
             download_url: p.download_url,
+            item_title: item.title,
           });
           if (r.ok) applied++;
         }
@@ -413,7 +418,7 @@ function PosterGrid({
   busyKey: string | null;
   onBack?: () => void;
   onAuto: () => void;
-  onApply: (a: PosterAsset, t: ImageTarget, id: string, key: string) => void;
+  onApply: (a: PosterAsset, t: ImageTarget, id: string, key: string, titleOverride?: string) => void;
   onOpenSet: (a: PosterAsset) => void;
   seasonByNumber: (n?: number | null) => ItemDetail["seasons"][number] | undefined;
 }) {
@@ -510,7 +515,7 @@ function PosterGrid({
                       <ApplyButton
                         label={`→ Season ${asset.season_number}`}
                         busy={busyKey === `s-${asset.id}`}
-                        onClick={() => onApply(asset, "poster", season.id, `s-${asset.id}`)}
+                        onClick={() => onApply(asset, "poster", season.id, `s-${asset.id}`, `${item.title} — ${season.title}`)}
                       />
                     ) : (
                       <ApplyButton
@@ -523,7 +528,7 @@ function PosterGrid({
                       item={item}
                       busy={busyKey?.includes(asset.id) ?? false}
                       onPick={(target, targetId, label) =>
-                        onApply(asset, target, targetId, `c-${asset.id}-${targetId}-${target}-${label}`)
+                        onApply(asset, target, targetId, `c-${asset.id}-${targetId}-${target}-${label}`, `${item.title} — ${label}`)
                       }
                     />
                   </div>

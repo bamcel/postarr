@@ -38,8 +38,7 @@ There is no test suite; verification is done against a live media server.
   needing a login.
 - `frontend/src/components/ArtworkPanel.tsx` — provider selector wrapping
   `PosterDBBody` (ThePosterDB drill-down), `ArtworkBrowser` (API providers),
-  `ManualUpload`, and `HistoryPanel`. Apply targets are built once in
-  `lib/targets.ts`.
+  and `ManualUpload`. Apply targets are built once in `lib/targets.ts`.
 - `backend/app/history.py` — apply history (revert-to-previous-image). Every
   successful `set_image` call, from any of the two apply endpoints
   (`/posterdb/apply`, `/artwork/upload`), also calls `history.record(...)`,
@@ -47,7 +46,13 @@ There is no test suite; verification is done against a live media server.
   `apply_history` SQLite table (last 5 kept per server+item+target; older
   ones pruned from both disk and DB). Revert re-applies those same bytes and
   records that as a new entry — reverting never deletes the entry it
-  reverted to, so history stays a true timeline, not a stack.
+  reverted to, so history stays a true timeline, not a stack. The UI is a
+  single **global** feed (`frontend/src/pages/HistoryPage.tsx`, linked from
+  the sidebar) rather than a per-item tab — `GET /api/history` returns that
+  global feed when called without `item_id`. `item_title` is denormalized
+  onto each row (sent by the frontend at apply time, since it's already in
+  hand there) specifically so the global feed doesn't need an extra
+  media-server round trip per row just to render.
 - Secrets (server tokens, TPDb password, API keys) are Fernet-encrypted in
   SQLite (`db.SECRET_SETTINGS`); the key lives in `data/secret.key`. Neither
   is ever sent to the browser.
@@ -108,6 +113,16 @@ There is no test suite; verification is done against a live media server.
   (fetch the section's own collections, fetch each one's children via
   `/library/collections/{id}/children` in parallel, substitute), but the
   first real Plex test is the thing most likely to need a tweak.
+- **`db.SCHEMA`'s `CREATE TABLE IF NOT EXISTS` doesn't retroactively add new
+  columns** to a table that already exists on disk (e.g. adding `item_title`
+  to `apply_history` after the table was already created) — needs an
+  explicit `ALTER TABLE ... ADD COLUMN` in `db._migrate()`, gated on a
+  `PRAGMA table_info` check, run from `init_db()` on every startup.
+- **`apply_history` prunes to the last 5 rows per (server, item, target)**
+  — deletes both the DB row and the file on disk. If a specific history
+  entry you were expecting seems to have vanished mid-testing, check
+  whether repeated applies to the same title pushed it out of that window
+  before assuming something's broken (bit us once while testing revert).
 
 ## Conventions
 

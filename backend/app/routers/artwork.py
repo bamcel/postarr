@@ -97,6 +97,7 @@ async def upload_image(
     server_id: int = Form(...),
     item_id: str = Form(..., description="show/movie id, or a season id"),
     target: ImageTarget = Form("poster"),
+    item_title: str = Form(""),
     file: UploadFile = File(...),
 ) -> ApplyResult:
     """Apply a user-supplied image file as an item's poster/background.
@@ -119,5 +120,5 @@ async def upload_image(
     except MediaError as exc:
         return ApplyResult(ok=False, message=f"Upload failed: {exc}")
 
-    history.record(server_id, item_id, target, data, content_type, "manual")
+    history.record(server_id, item_id, target, data, content_type, "manual", item_title)
     return ApplyResult(ok=True, message="Applied your image successfully.")

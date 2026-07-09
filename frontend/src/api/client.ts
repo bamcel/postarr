@@ -105,6 +105,7 @@ export const api = {
     target: ImageTarget;
     provider?: string;
     download_url: string;
+    item_title?: string;
   }) => request<ApplyResult>("/posterdb/apply", { method: "POST", body: JSON.stringify(data) }),
 
   // -- artwork providers (Fanart / AniList / TVDB) --
@@ -127,12 +128,14 @@ export const api = {
     item_id: string;
     target: ImageTarget;
     file: File;
+    item_title?: string;
   }): Promise<ApplyResult> => {
     const fd = new FormData();
     fd.append("server_id", String(data.server_id));
     fd.append("item_id", data.item_id);
     fd.append("target", data.target);
     fd.append("file", data.file);
+    if (data.item_title) fd.append("item_title", data.item_title);
     const res = await fetch("/api/artwork/upload", { method: "POST", body: fd });
     if (!res.ok) {
       let detail = res.statusText;
@@ -146,12 +149,15 @@ export const api = {
     return res.json();
   },
 
-  // -- apply history (revert to a previously-applied image) --
-  getHistory: (serverId: number, itemId: string, target?: ImageTarget) =>
-    request<ApplyHistoryEntry[]>(
-      `/history?server_id=${serverId}&item_id=${encodeURIComponent(itemId)}` +
-        (target ? `&target=${target}` : ""),
-    ),
+  // -- apply history (global feed + revert to a previously-applied image) --
+  getHistory: (opts: { serverId?: number; itemId?: string; target?: ImageTarget; limit?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (opts.serverId != null) p.set("server_id", String(opts.serverId));
+    if (opts.itemId) p.set("item_id", opts.itemId);
+    if (opts.target) p.set("target", opts.target);
+    if (opts.limit != null) p.set("limit", String(opts.limit));
+    return request<ApplyHistoryEntry[]>(`/history?${p.toString()}`);
+  },
   revertHistory: (historyId: number) =>
     request<ApplyResult>(`/history/${historyId}/revert`, { method: "POST" }),
 };
