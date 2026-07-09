@@ -21,13 +21,11 @@ go stale, and don't duplicate what's already in CLAUDE.md/README.md.
   clone on another device won't have them. Don't push them unilaterally; the user has twice been
   asked and twice said to leave them local-only.
 - **The SQLite database (`/data` in the container — server configs, encrypted credentials, apply
-  history + images) is gitignored and lives in the `postarr-data` Docker volume, not in git.** A
-  fresh clone + build on a different device starts with **zero configured servers** — the code
-  carries over, the configured state doesn't. To actually continue with the same setup (same
-  Emby server, same ThePosterDB login, same history) on a new machine, the user needs to migrate
-  the `postarr-data` volume itself (e.g. `docker run --rm -v postarr-data:/from -v /path:/to
-  alpine cp -a /from/. /to/` on the old machine, then load it into a volume with the same name on
-  the new one) — otherwise just re-add the server/credentials fresh in Settings.
+  history + images) is gitignored and lives in the `postarr-data` Docker volume, not in git —
+  and this is intentional, not a gap.** Every install (a new dev machine, an end user's Docker/
+  Unraid deployment) is expected to configure its own media server(s) and API keys from scratch
+  via Settings. **Don't build or suggest volume-migration tooling** — a fresh install having zero
+  configured servers is the correct, expected first-run state, not something to fix.
 
 ## What the app can do (all verified live against the user's real Emby unless noted)
 
@@ -101,8 +99,7 @@ summary, not the source of truth.
    touch.
 3. `docker compose up -d --build` to get a local instance running (or `docker compose ps` first
    if one might already be up).
-4. If this is a genuinely new machine (not just a fresh clone on the same one), check whether the
-   `postarr-data` volume was migrated — if not, Settings will be empty and the user needs to
-   re-add their media server + ThePosterDB login before there's anything to test against.
+4. On a genuinely new machine, Settings will be empty (by design — see above) until the user
+   adds their media server + ThePosterDB login there. That's expected, not a problem to solve.
 5. Ask the user what's next — don't assume the "ideas not yet built" list above is a to-do list;
    it's just context.
