@@ -264,17 +264,29 @@ def get_apply_history_entry(history_id: int) -> Optional[dict[str, Any]]:
     return dict(row) if row else None
 
 
-def prune_apply_history(server_id: int, item_id: str, target: str, keep: int) -> list[str]:
-    """Delete all but the ``keep`` most recent rows for this target; returns
-    the now-orphaned file paths so the caller can delete them from disk."""
+def prune_apply_history_global(keep: int) -> list[str]:
+    """Delete all but the ``keep`` most recent rows across the whole table
+    (not scoped to one item/target); returns the now-orphaned file paths so
+    the caller can delete them from disk."""
     with get_conn() as conn:
-        rows = conn.execute(
-            """SELECT id, file_path FROM apply_history
-               WHERE server_id = ? AND item_id = ? AND target = ?
-               ORDER BY applied_at DESC, id DESC""",
-            (server_id, item_id, target),
-        ).fetchall()
+        rows = conn.execute("SELECT id, file_path FROM apply_history ORDER BY applied_at DESC, id DESC").fetchall()
         stale = rows[keep:]
         for r in stale:
             conn.execute("DELETE FROM apply_history WHERE id = ?", (r["id"],))
     return [r["file_path"] for r in stale]
+
+
+def purge_apply_history_older_than(days: int) -> list[str]:
+    """Delete rows older than ``days`` days (``days <= 0`` deletes every
+    row); returns the now-orphaned file paths."""
+    with get_conn() as conn:
+        if days > 0:
+            rows = conn.execute(
+                "SELECT id, file_path FROM apply_history WHERE applied_at < datetime('now', ?)",
+                (f"-{days} days",),
+            ).fetchall()
+        else:
+            rows = conn.execute("SELECT id, file_path FROM apply_history").fetchall()
+        for r in rows:
+            conn.execute("DELETE FROM apply_history WHERE id = ?", (r["id"],))
+    return [r["file_path"] for r in rows]

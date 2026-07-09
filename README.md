@@ -29,9 +29,10 @@ a bad pick is one click to undo.
   — no more scrolling past every "John Wick" sequel individually. Live-verified on Emby/Jellyfin;
   the Plex-side code follows the same shape but hasn't been run against a real Plex server.
 - **Apply history + revert**: every image you apply — from any provider or a manual upload —
-  is remembered (last 5 per title+poster/background/logo). A global **History** page (sidebar)
-  lists everything applied across the server, newest first, with a one-click **Revert** — so a
-  bad pick costs nothing and you don't have to remember which title you last touched.
+  is remembered (up to 50 entries, globally). A global **History** page (sidebar) lists
+  everything applied across the server, newest first, with a one-click **Revert** — so a bad
+  pick costs nothing and you don't have to remember which title you last touched. Retention is
+  configurable right there: an optional auto-purge after N days, or a manual **Purge now**.
 - **Apply anywhere**: set any image as the poster, background, or clear logo — or use
   **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season, or a
   poster from a collection's page directly onto one of its member movies without leaving the
@@ -190,7 +191,9 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
    logo, a specific season, or — on a collection's page — any of its member movies/shows,
    without leaving the page.
 6. **History** (sidebar): a global feed of everything applied to the active server, newest
-   first — jump to any title from there, or **Revert** it back to an earlier image.
+   first — jump to any title from there, or **Revert** it back to an earlier image. Up to 50
+   entries are always kept; set an auto-purge age (in days) or hit **Purge now** to trim it
+   further.
 
 ## API
 
@@ -217,6 +220,8 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | `GET` | `/api/history?server_id=[&item_id=&target=&limit=]` | apply history — global feed when `item_id` is omitted |
 | `GET` | `/api/history/{id}/image` | a history entry's stored image |
 | `POST` | `/api/history/{id}/revert` | re-apply a history entry as current |
+| `GET/PUT` | `/api/history/settings` | auto-purge age in days (0 = disabled) |
+| `POST` | `/api/history/purge?days=` | purge now; omit `days` to use the saved setting, `0` purges everything |
 
 ## License
 

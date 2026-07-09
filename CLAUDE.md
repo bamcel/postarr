@@ -43,16 +43,21 @@ There is no test suite; verification is done against a live media server.
   successful `set_image` call, from any of the two apply endpoints
   (`/posterdb/apply`, `/artwork/upload`), also calls `history.record(...)`,
   which writes the bytes to `data/history/` and indexes them in the
-  `apply_history` SQLite table (last 5 kept per server+item+target; older
-  ones pruned from both disk and DB). Revert re-applies those same bytes and
-  records that as a new entry — reverting never deletes the entry it
-  reverted to, so history stays a true timeline, not a stack. The UI is a
-  single **global** feed (`frontend/src/pages/HistoryPage.tsx`, linked from
-  the sidebar) rather than a per-item tab — `GET /api/history` returns that
-  global feed when called without `item_id`. `item_title` is denormalized
-  onto each row (sent by the frontend at apply time, since it's already in
-  hand there) specifically so the global feed doesn't need an extra
-  media-server round trip per row just to render.
+  `apply_history` SQLite table. Two independent caps: a hard global ceiling
+  (`GLOBAL_HISTORY_LIMIT = 50`, always enforced on insert, oldest rows +
+  files pruned first — not per-item, a single shared budget) and an optional
+  user-set max age in days (`history_purge_days` setting, 0 = disabled,
+  swept opportunistically on every `record()` call, no scheduler needed).
+  Revert re-applies those same bytes and records that as a new entry —
+  reverting never deletes the entry it reverted to, so history stays a true
+  timeline, not a stack. The UI is a single **global** feed
+  (`frontend/src/pages/HistoryPage.tsx`, linked from the sidebar) rather
+  than a per-item tab — `GET /api/history` returns that global feed when
+  called without `item_id`; `POST /api/history/purge` triggers an immediate
+  manual purge. `item_title` is denormalized onto each row (sent by the
+  frontend at apply time, since it's already in hand there) specifically so
+  the global feed doesn't need an extra media-server round trip per row
+  just to render.
 - Secrets (server tokens, TPDb password, API keys) are Fernet-encrypted in
   SQLite (`db.SECRET_SETTINGS`); the key lives in `data/secret.key`. Neither
   is ever sent to the browser.
@@ -118,11 +123,13 @@ There is no test suite; verification is done against a live media server.
   to `apply_history` after the table was already created) — needs an
   explicit `ALTER TABLE ... ADD COLUMN` in `db._migrate()`, gated on a
   `PRAGMA table_info` check, run from `init_db()` on every startup.
-- **`apply_history` prunes to the last 5 rows per (server, item, target)**
-  — deletes both the DB row and the file on disk. If a specific history
-  entry you were expecting seems to have vanished mid-testing, check
-  whether repeated applies to the same title pushed it out of that window
-  before assuming something's broken (bit us once while testing revert).
+- **`apply_history` prunes to the last 50 rows *globally*** (not per item)
+  — deletes both the DB row and the file on disk, on every `record()` call.
+  Originally per-(server,item,target) capped at 5; changed to one shared
+  global budget per user request. If a specific history entry you were
+  expecting seems to have vanished mid-testing, check whether repeated
+  applies (to *any* title) pushed it out of that window before assuming
+  something's broken (bit us once while testing revert).
 
 ## Conventions
 

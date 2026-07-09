@@ -248,3 +248,13 @@ class ApplyHistoryEntry(BaseModel):
     provider: str
     applied_at: str
     thumb_url: str
+
+
+class HistorySettings(BaseModel):
+    # Max age in days before an entry is auto-purged; 0 = disabled (only the
+    # global 50-entry cap applies).
+    purge_days: int = 0
+
+
+class HistoryPurgeResult(BaseModel):
+    purged: int

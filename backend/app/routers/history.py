@@ -9,9 +9,25 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from .. import db, history
 from ..media.base import MediaError
 from ..media.factory import client_for
-from ..schemas import ApplyHistoryEntry, ApplyResult
+from ..schemas import ApplyHistoryEntry, ApplyResult, HistoryPurgeResult, HistorySettings
 
 router = APIRouter(prefix="/api/history", tags=["history"])
+
+
+@router.get("/settings", response_model=HistorySettings)
+async def get_settings() -> HistorySettings:
+    return HistorySettings(purge_days=history.get_purge_days())
+
+
+@router.put("/settings", response_model=HistorySettings)
+async def update_settings(payload: HistorySettings) -> HistorySettings:
+    history.set_purge_days(payload.purge_days)
+    return HistorySettings(purge_days=history.get_purge_days())
+
+
+@router.post("/purge", response_model=HistoryPurgeResult)
+async def purge(days: Optional[int] = Query(None, description="Omit to use the saved setting")) -> HistoryPurgeResult:
+    return HistoryPurgeResult(purged=history.purge_now(days))
 
 
 @router.get("", response_model=list[ApplyHistoryEntry])

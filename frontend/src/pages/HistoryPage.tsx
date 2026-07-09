@@ -3,10 +3,10 @@
 // The first (most recent) entry for a given item+target is "Current"; any
 // earlier one can be reverted back to in one click.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { History as HistoryIcon, Loader2, RotateCcw } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { History as HistoryIcon, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "../api/client";
 import { useServers } from "../lib/serverContext";
 import { useToast } from "../lib/toast";
@@ -59,6 +59,43 @@ export default function HistoryPage() {
     enabled: serverId != null,
   });
 
+  // Retention: a global 50-entry cap always applies server-side; this is the
+  // optional extra day-based cutoff on top of it.
+  const settingsQ = useQuery({ queryKey: ["history-settings"], queryFn: api.getHistorySettings });
+  const [purgeDaysInput, setPurgeDaysInput] = useState("");
+  useEffect(() => {
+    if (settingsQ.data) setPurgeDaysInput(settingsQ.data.purge_days ? String(settingsQ.data.purge_days) : "");
+  }, [settingsQ.data]);
+
+  const saveSettingsMut = useMutation({
+    mutationFn: () => api.setHistorySettings(Number(purgeDaysInput) || 0),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["history-settings"] });
+      toast.push("success", "Retention setting saved.");
+    },
+    onError: (e: Error) => toast.push("error", e.message),
+  });
+
+  const [purging, setPurging] = useState(false);
+  async function purgeNow() {
+    const days = Number(purgeDaysInput) || 0;
+    const msg =
+      days > 0
+        ? `Delete every history entry older than ${days} day${days === 1 ? "" : "s"}? Reverting to them won't be possible afterward — applied artwork on your server is unaffected.`
+        : "Delete ALL history entries? Reverting to them won't be possible afterward — applied artwork on your server is unaffected.";
+    if (!confirm(msg)) return;
+    setPurging(true);
+    try {
+      const res = await api.purgeHistory(days);
+      toast.push("success", `Purged ${res.purged} ${res.purged === 1 ? "entry" : "entries"}.`);
+      await queryClient.invalidateQueries({ queryKey: ["apply-history-global", serverId] });
+    } catch (e) {
+      toast.push("error", (e as Error).message);
+    } finally {
+      setPurging(false);
+    }
+  }
+
   const entries = q.data ?? [];
   // Pure derivation (not a during-render mutation) so it's safe under
   // StrictMode's double-render: the first entry seen per item+target is
@@ -110,13 +147,50 @@ export default function HistoryPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-8 pb-5 pt-6">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <HistoryIcon className="size-6 text-accent" /> History
-        </h1>
-        <p className="text-sm text-faint">
-          Everything applied to {selectedServer.name}, most recent first — revert any of them in
-          one click.
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              <HistoryIcon className="size-6 text-accent" /> History
+            </h1>
+            <p className="text-sm text-faint">
+              Everything applied to {selectedServer.name}, most recent first — revert any of them
+              in one click. Up to 50 entries are always kept.
+            </p>
+          </div>
+
+          <div className="flex items-end gap-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">
+                Auto-purge after (days, 0 = off)
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={purgeDaysInput}
+                onChange={(e) => setPurgeDaysInput(e.target.value)}
+                placeholder="0"
+                className="w-32 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </label>
+            <button
+              onClick={() => saveSettingsMut.mutate()}
+              disabled={saveSettingsMut.isPending}
+              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-accent-hover disabled:opacity-50"
+            >
+              {saveSettingsMut.isPending && <Loader2 className="size-4 animate-spin" />}
+              Save
+            </button>
+            <button
+              onClick={purgeNow}
+              disabled={purging}
+              title="Purge now, using the days value above (0 purges everything)"
+              className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:border-danger hover:text-danger disabled:opacity-50"
+            >
+              {purging ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Purge now
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-8 py-6">

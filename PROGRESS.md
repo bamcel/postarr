@@ -34,27 +34,34 @@ there's no Plex server in this environment, so it's never actually been run. If 
 reports it's off, that's the first place to look.
 
 **Apply history + revert**: every successful apply (any provider, or a manual upload) is
-recorded — bytes saved to `data/history/`, indexed in `apply_history` SQLite table, last 5 kept
-per server+item+target. Originally shipped as a per-item "History" tab in the artwork panel, then
-**pivoted the same session** to a single **global** feed instead (`/history` in the sidebar,
-`HistoryPage.tsx`) — every apply across the whole server, newest first, with **Revert** — because
-a global "what did I just do" view is more useful than having to remember which title to check.
-`apply_history` gained an `item_title` column (denormalized — the frontend already has the title
-in hand at apply time, sent along with `ApplyRequest`/`/artwork/upload`, so the global feed
-doesn't need a media-server round trip per row) with a real `db._migrate()` ALTER TABLE since the
-table already existed on disk from the per-item version. Verified live end-to-end against the
-real Emby (item 84973, "3:10 to Yuma"): re-applied its true original poster bytes (zero visual
-change), applied a different borrowed poster, reverted back via the real UI button, confirmed
-byte-for-byte the live poster matched the true original — then re-verified again after the pivot
-with `item_title` included, confirming it threads through correctly and shows in the global feed
-while old (pre-migration) rows correctly fall back to displaying their raw item id. **Caught two
-real things while testing, both about the 5-per-target prune, not bugs**: (1) clicking the first
-"Revert" button in the DOM isn't necessarily the *original* entry if 3+ rows exist — it's
-whichever is second-most-recent — briefly left the real item on the wrong image before being
-caught by comparing bytes and fixed; (2) aggressive re-testing on the same title eventually prunes
-old rows (including their files) past the 5-row cap, so a reference entry created early in a test
-session can silently disappear later — not a bug, just something to expect when scripting repeat
-applies to the same title.
+recorded — bytes saved to `data/history/`, indexed in `apply_history` SQLite table. Originally
+shipped as a per-item "History" tab, then **pivoted the same session** to a single **global**
+feed instead (`/history` in the sidebar, `HistoryPage.tsx`) — every apply across the whole
+server, newest first, with **Revert** — because a global "what did I just do" view is more
+useful than having to remember which title to check. `apply_history` gained an `item_title`
+column (denormalized — the frontend already has the title in hand at apply time, so the global
+feed doesn't need a media-server round trip per row) via a real `db._migrate()` ALTER TABLE
+since the table already existed on disk.
+
+**Retention (added right after, same session)**: the original per-(item,target) cap of 5 was
+replaced with one **global hard cap of 50 rows** (oldest pruned first, DB row + file both),
+plus an optional **user-configurable auto-purge age in days** (0 = disabled, swept on every
+apply) and a manual **Purge now** button — both live at the top of the History page, backed by
+`GET/PUT /api/history/settings` and `POST /api/history/purge?days=`. Verified live: settings
+save/load round-trip, a no-op purge (large day threshold, correctly purged 0), and a full purge
+(days=0) that correctly emptied both the DB table *and* deleted every file on disk (`du` showed
+`/data/history` back to 4K). Real disk usage checked live too: ~15MB across 7 entries at the
+time, all full-resolution (2-5MB each) — the 50-cap now bounds worst case to roughly 100-250MB
+rather than unbounded growth.
+
+Along the way, verified the original apply/revert round trip twice more (re-apply true original
+→ apply a different poster → revert → byte-for-byte match against the real Emby item 84973,
+"3:10 to Yuma") and **hit two real things while testing, both expected behavior of the
+prune/cap mechanics, not bugs**: (1) clicking the first "Revert" button in the DOM isn't
+necessarily the *original* entry if 3+ rows exist for that item — briefly left the real item on
+the wrong image before being caught by comparing bytes and fixed; (2) aggressive re-testing on
+the same title eventually prunes old rows (including their files) past whatever cap is active,
+so a reference entry created early in a test session can silently disappear later.
 
 Settings is tabbed (**Server Setup** / **Database Connection**); the sidebar and artwork panel
 use a frosted-glass look (blurred backdrop bleeding behind them, matching Emby's own UI).
@@ -85,9 +92,10 @@ Full endpoint list and setup steps are in README.md — don't duplicate that her
   `group_collections=true` library listing re-fetches all BoxSets + their children fresh from
   Emby. User was told about this and said it's fine for now (their collection count is small).
 - History thumbnails serve the **full-resolution** stored image, not a resized version — fine
-  functionally (verified they load correctly) but means up to 15 multi-MB images per History tab
-  open. No image-resizing library (e.g. Pillow) is a dependency yet; would need one to fix
-  properly. Noted as a possible follow-up, not fixed.
+  functionally (verified they load correctly), and now bounded by the 50-entry global cap
+  (~100-250MB worst case) rather than unbounded, but still means multi-MB images per row on the
+  History page. No image-resizing library (e.g. Pillow) is a dependency yet; would need one to
+  fix properly. Noted as a possible follow-up, not fixed.
 
 ## Ideas not yet built (suggested, not requested)
 

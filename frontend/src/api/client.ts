@@ -8,6 +8,8 @@ import type {
   ArtworkResults,
   ArtworkSettings,
   ConnectionTest,
+  HistoryPurgeResult,
+  HistorySettings,
   ImageTarget,
   ItemDetail,
   Library,
@@ -160,4 +162,12 @@ export const api = {
   },
   revertHistory: (historyId: number) =>
     request<ApplyResult>(`/history/${historyId}/revert`, { method: "POST" }),
+  getHistorySettings: () => request<HistorySettings>("/history/settings"),
+  setHistorySettings: (purgeDays: number) =>
+    request<HistorySettings>("/history/settings", {
+      method: "PUT",
+      body: JSON.stringify({ purge_days: purgeDays }),
+    }),
+  purgeHistory: (days?: number) =>
+    request<HistoryPurgeResult>(`/history/purge${days != null ? `?days=${days}` : ""}`, { method: "POST" }),
 };

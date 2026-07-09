@@ -151,3 +151,11 @@ export interface ApplyHistoryEntry {
   applied_at: string;
   thumb_url: string;
 }
+
+export interface HistorySettings {
+  purge_days: number;
+}
+
+export interface HistoryPurgeResult {
+  purged: number;
+}

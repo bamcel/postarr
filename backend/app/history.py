@@ -1,7 +1,7 @@
-"""Apply history: keeps the last few images applied to each (server, item,
-target) so a bad pick can be reverted without re-searching from scratch —
-and, via ``list_recent`` with no ``item_id``, a global feed of everything
-applied across the server(s), newest first.
+"""Apply history: keeps the most recent applied images so a bad pick can be
+reverted without re-searching from scratch — and, via ``list_recent`` with
+no ``item_id``, a global feed of everything applied across the server(s),
+newest first.
 
 Every successful apply — from any artwork provider or a manual upload —
 records an entry here. The image bytes are saved to disk under
@@ -9,6 +9,11 @@ records an entry here. The image bytes are saved to disk under
 provider URLs can go stale (ThePosterDB needs its authenticated session,
 others may rate-limit, move, or require a Referer) — the bytes we already
 downloaded to apply them are the one thing guaranteed to still be good.
+
+Two independent caps keep this from growing forever: a hard ceiling on the
+total row count (``GLOBAL_HISTORY_LIMIT``, always enforced), and an optional
+user-configured max age in days (``settings.history_purge_days``, 0 =
+disabled) swept on every new apply.
 """
 
 from __future__ import annotations
@@ -21,7 +26,8 @@ from . import db
 from .config import DATA_DIR
 
 HISTORY_DIR = DATA_DIR / "history"
-MAX_PER_TARGET = 5
+GLOBAL_HISTORY_LIMIT = 50
+PURGE_DAYS_SETTING = "history_purge_days"
 
 _EXT_BY_CONTENT_TYPE = {
     "image/jpeg": ".jpg",
@@ -47,8 +53,34 @@ def record(
     path.write_bytes(data)
     db.insert_apply_history(server_id, item_id, target, str(path), content_type, provider, item_title)
 
-    for stale_path in db.prune_apply_history(server_id, item_id, target, keep=MAX_PER_TARGET):
-        Path(stale_path).unlink(missing_ok=True)
+    _delete_files(db.prune_apply_history_global(keep=GLOBAL_HISTORY_LIMIT))
+
+    days = get_purge_days()
+    if days > 0:
+        _delete_files(db.purge_apply_history_older_than(days))
+
+
+def get_purge_days() -> int:
+    raw = db.get_setting(PURGE_DAYS_SETTING)
+    return int(raw) if raw.isdigit() else 0
+
+
+def set_purge_days(days: int) -> None:
+    db.set_setting(PURGE_DAYS_SETTING, str(max(0, days)))
+
+
+def purge_now(days: Optional[int] = None) -> int:
+    """Manual purge: uses ``days`` if given, else the saved setting (0/unset
+    purges everything). Returns how many entries were removed."""
+    effective = days if days is not None else get_purge_days()
+    stale = db.purge_apply_history_older_than(effective)
+    _delete_files(stale)
+    return len(stale)
+
+
+def _delete_files(paths: list[str]) -> None:
+    for p in paths:
+        Path(p).unlink(missing_ok=True)
 
 
 def list_recent(
