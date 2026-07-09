@@ -82,15 +82,16 @@ class PlexClient(MediaClient):
         return libraries
 
     async def get_items(self, library_id: str, group_collections: bool = True) -> list[NormalizedItem]:
-        # group_collections isn't implemented for Plex yet — accepted for
-        # interface parity with Jellyfin/Emby, always behaves as ungrouped.
+        is_collections = library_id == _COLLECTIONS_ID
         async with self._client() as client:
-            if library_id == _COLLECTIONS_ID:
+            if is_collections:
                 sections = (await self._get_json(client, "/library/sections")).get("Directory", [])
                 metadata = await self._all_collections(client, sections)
             else:
                 mc = await self._get_json(client, f"/library/sections/{library_id}/all")
                 metadata = mc.get("Metadata", [])
+                if group_collections:
+                    metadata = await self._collapse_collections(client, library_id, metadata)
         return [
             NormalizedItem(
                 id=str(m["ratingKey"]),
@@ -111,6 +112,51 @@ class PlexClient(MediaClient):
             return_exceptions=True,
         )
         return [m for r in results if isinstance(r, dict) for m in r.get("Metadata", [])]
+
+    async def _collapse_collections(
+        self, client: httpx.AsyncClient, library_id: str, items: list[dict]
+    ) -> list[dict]:
+        """Replace movies/shows that belong to a collection with a single
+        collection tile, mirroring JellyfinClient._collapse_boxsets.
+
+        Plex collections are already scoped to one section, so this only
+        needs that section's own collections (no global scan like Emby's
+        BoxSets need) — fetch them, fetch each one's children in parallel,
+        then substitute the first member encountered for its collection and
+        drop the rest.
+        """
+        collections = (await self._get_json(client, f"/library/sections/{library_id}/collections")).get(
+            "Metadata", []
+        )
+        if not collections:
+            return items
+
+        children_lists = await asyncio.gather(
+            *(self._get_json(client, f"/library/collections/{c['ratingKey']}/children") for c in collections),
+            return_exceptions=True,
+        )
+        member_to_collection: dict[str, dict] = {}
+        for coll, children in zip(collections, children_lists):
+            if not isinstance(children, dict):
+                continue
+            for child in children.get("Metadata", []):
+                member_to_collection.setdefault(str(child["ratingKey"]), coll)
+        if not member_to_collection:
+            return items
+
+        result: list[dict] = []
+        seen: set[str] = set()
+        for it in items:
+            coll = member_to_collection.get(str(it["ratingKey"]))
+            if coll is None:
+                result.append(it)
+                continue
+            if coll["ratingKey"] in seen:
+                continue  # drop later members of an already-emitted collection
+            seen.add(coll["ratingKey"])
+            result.append(coll)
+        result.sort(key=lambda it: (it.get("title") or "").lower())
+        return result
 
     async def get_item_detail(self, item_id: str) -> ItemDetail:
         async with self._client() as client:

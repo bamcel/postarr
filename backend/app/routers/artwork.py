@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 
-from .. import db
+from .. import db, history
 from ..artwork import get_provider, provider_infos
 from ..artwork.base import ArtworkError
 from ..media.base import MediaError
@@ -118,4 +118,6 @@ async def upload_image(
         await client_for(server).set_image(item_id, target, data, content_type)
     except MediaError as exc:
         return ApplyResult(ok=False, message=f"Upload failed: {exc}")
+
+    history.record(server_id, item_id, target, data, content_type, "manual")
     return ApplyResult(ok=True, message="Applied your image successfully.")

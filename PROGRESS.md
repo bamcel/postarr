@@ -23,15 +23,29 @@ account/key — see CLAUDE.md gotchas for its scraping quirks). Apply to poster/
 on Plex/Jellyfin/Emby, including a **Custom** target picker (any season, Season 0/Specials
 included, or — on a collection's page — any member movie/show) and a **Manual** upload tab.
 
-**Collections** (Emby/Jellyfin only so far): a virtual **Collections** library lists every
-collection on the server; each collection's own detail page shows its members with drill-through
-to their own full detail pages; a **Group Collections** toggle on regular library views replaces
-a collection's member movies/shows with one tile (built by hand — Emby's own
-`CollapseBoxSetItems` param doesn't work reliably, see CLAUDE.md). **Plex collections/grouping is
-code-complete but never live-verified** — there's no Plex server in this environment to test
-against; the Plex-side code follows the same pattern as Emby/Jellyfin but the exact field
-matching (Plex uses a `Collection` tag array, not clean parent-id lookup) may need a tweak once
-tested for real.
+**Collections**: a virtual **Collections** library lists every collection on the server; each
+collection's own detail page shows its members with drill-through to their own full detail
+pages; a **Group Collections** toggle on regular library views replaces a collection's member
+movies/shows with one tile (built by hand for both Emby/Jellyfin and Plex — Emby's own
+`CollapseBoxSetItems` param doesn't work reliably, see CLAUDE.md). **Live-verified on
+Emby/Jellyfin only** — `PlexClient._collapse_collections` mirrors the Jellyfin pattern closely
+(fetch the section's own collections, fetch each one's children in parallel, substitute) but
+there's no Plex server in this environment, so it's never actually been run. If a Plex user
+reports it's off, that's the first place to look.
+
+**Apply history + revert**: every successful apply (any provider, or a manual upload) is now
+recorded — bytes saved to `data/history/`, indexed in a new `apply_history` SQLite table, last 5
+kept per server+item+target. A new **History** tab in the artwork panel shows them with a
+one-click **Revert**. Verified live end-to-end against the real Emby (item 84973, "3:10 to
+Yuma"): re-applied its true original poster bytes (zero visual change, history row 1), applied a
+different borrowed poster (history row 2), confirmed both showed up correctly with row 2 marked
+"Current", reverted to row 1 via the real UI button, and confirmed byte-for-byte that the live
+poster matched the true original again. **Caught a real bug during this test**: with 3 history
+rows present, the *first* "Revert" button in the DOM belongs to the second-most-recent entry, not
+the original — clicking it left the real item on the wrong (borrowed test) image for a few
+minutes before it was caught by comparing bytes and fixed by reverting to the correct entry. Not
+a code bug, just a reminder to double-check *which* entry a revert click targets when multiple
+exist, especially when scripting a test rather than clicking by eye.
 
 Settings is tabbed (**Server Setup** / **Database Connection**); the sidebar and artwork panel
 use a frosted-glass look (blurred backdrop bleeding behind them, matching Emby's own UI).
@@ -61,12 +75,17 @@ Full endpoint list and setup steps are in README.md — don't duplicate that her
 - No backend caching on the collection-membership lookup (`_collapse_boxsets`) — every
   `group_collections=true` library listing re-fetches all BoxSets + their children fresh from
   Emby. User was told about this and said it's fine for now (their collection count is small).
+- History thumbnails serve the **full-resolution** stored image, not a resized version — fine
+  functionally (verified they load correctly) but means up to 15 multi-MB images per History tab
+  open. No image-resizing library (e.g. Pillow) is a dependency yet; would need one to fix
+  properly. Noted as a possible follow-up, not fixed.
 
 ## Ideas not yet built (suggested, not requested)
 
 - A "missing artwork" report/dashboard covering a whole library at once (new-item detection
   above only flags what's changed since your last visit, not a full audit).
 - Backend caching for the collection-membership lookup (offered, declined "for now").
+- Resize History tab thumbnails server-side instead of serving full-res (see gotcha above).
 
 ## To resume
 

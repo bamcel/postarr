@@ -228,3 +228,15 @@ class ApplyRequest(BaseModel):
 class ApplyResult(BaseModel):
     ok: bool
     message: str
+
+
+# ---------------------------------------------------------------------------
+# Apply history (revert-to-previous-image)
+# ---------------------------------------------------------------------------
+
+class ApplyHistoryEntry(BaseModel):
+    id: int
+    target: ImageTarget
+    provider: str
+    applied_at: str
+    thumb_url: str

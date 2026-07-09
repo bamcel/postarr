@@ -31,6 +31,23 @@ CREATE TABLE IF NOT EXISTS settings (
     key       TEXT PRIMARY KEY,
     value_enc TEXT NOT NULL DEFAULT ''
 );
+
+-- One row per successfully-applied image (any provider or manual upload) so
+-- a bad pick can be reverted. The bytes themselves live on disk (see
+-- app/history.py) since provider URLs can go stale or need auth we no
+-- longer have handy; this table just indexes them.
+CREATE TABLE IF NOT EXISTS apply_history (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    server_id    INTEGER NOT NULL,
+    item_id      TEXT    NOT NULL,
+    target       TEXT    NOT NULL,
+    file_path    TEXT    NOT NULL,
+    content_type TEXT    NOT NULL,
+    provider     TEXT    NOT NULL DEFAULT '',
+    applied_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_apply_history_item
+    ON apply_history (server_id, item_id, target, applied_at DESC);
 """
 
 # Keys in the ``settings`` table whose values are encrypted at rest.
@@ -171,3 +188,53 @@ def set_setting(key: str, value: str) -> None:
                ON CONFLICT(key) DO UPDATE SET value_enc = excluded.value_enc""",
             (key, stored),
         )
+
+
+# ---------------------------------------------------------------------------
+# Apply history (revert-to-previous-image)
+# ---------------------------------------------------------------------------
+
+def insert_apply_history(
+    server_id: int, item_id: str, target: str, file_path: str, content_type: str, provider: str
+) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO apply_history (server_id, item_id, target, file_path, content_type, provider)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (server_id, item_id, target, file_path, content_type, provider),
+        )
+        return cur.lastrowid  # type: ignore[return-value]
+
+
+def list_apply_history(server_id: int, item_id: str, target: Optional[str] = None) -> list[dict[str, Any]]:
+    query = "SELECT * FROM apply_history WHERE server_id = ? AND item_id = ?"
+    params: list[Any] = [server_id, item_id]
+    if target:
+        query += " AND target = ?"
+        params.append(target)
+    query += " ORDER BY applied_at DESC, id DESC"
+    with get_conn() as conn:
+        rows = conn.execute(query, params).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_apply_history_entry(history_id: int) -> Optional[dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM apply_history WHERE id = ?", (history_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def prune_apply_history(server_id: int, item_id: str, target: str, keep: int) -> list[str]:
+    """Delete all but the ``keep`` most recent rows for this target; returns
+    the now-orphaned file paths so the caller can delete them from disk."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT id, file_path FROM apply_history
+               WHERE server_id = ? AND item_id = ? AND target = ?
+               ORDER BY applied_at DESC, id DESC""",
+            (server_id, item_id, target),
+        ).fetchall()
+        stale = rows[keep:]
+        for r in stale:
+            conn.execute("DELETE FROM apply_history WHERE id = ?", (r["id"],))
+    return [r["file_path"] for r in stale]

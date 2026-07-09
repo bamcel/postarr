@@ -38,7 +38,16 @@ There is no test suite; verification is done against a live media server.
   needing a login.
 - `frontend/src/components/ArtworkPanel.tsx` — provider selector wrapping
   `PosterDBBody` (ThePosterDB drill-down), `ArtworkBrowser` (API providers),
-  and `ManualUpload`. Apply targets are built once in `lib/targets.ts`.
+  `ManualUpload`, and `HistoryPanel`. Apply targets are built once in
+  `lib/targets.ts`.
+- `backend/app/history.py` — apply history (revert-to-previous-image). Every
+  successful `set_image` call, from any of the two apply endpoints
+  (`/posterdb/apply`, `/artwork/upload`), also calls `history.record(...)`,
+  which writes the bytes to `data/history/` and indexes them in the
+  `apply_history` SQLite table (last 5 kept per server+item+target; older
+  ones pruned from both disk and DB). Revert re-applies those same bytes and
+  records that as a new entry — reverting never deletes the entry it
+  reverted to, so history stays a true timeline, not a stack.
 - Secrets (server tokens, TPDb password, API keys) are Fernet-encrypted in
   SQLite (`db.SECRET_SETTINGS`); the key lives in `data/secret.key`. Neither
   is ever sent to the browser.
@@ -87,12 +96,27 @@ There is no test suite; verification is done against a live media server.
   Next.js image proxy (used for thumbnails) 403s without a same-origin
   `Referer` header and 400s on a non-whitelisted `w=` value (only specific
   sizes like 256 are allowed) — see `backend/app/artwork/mediux.py`.
+- **SQLite's `datetime('now')`** (used for `apply_history.applied_at`) is
+  `"YYYY-MM-DD HH:MM:SS"` UTC with **no timezone marker and a space, not a
+  `T`** — `Date.parse()` on the frontend needs
+  `str.replace(" ", "T") + "Z"` first or it's ambiguous/wrong depending on
+  the browser. Jellyfin/Emby's `DateCreated` and Plex's normalized
+  `added_at` are proper ISO 8601 and don't need this.
+- **Plex's collection-grouping (`_collapse_collections`) and the rest of the
+  Plex collections code are unverified** — there's no Plex server in this
+  dev environment. It mirrors Jellyfin's `_collapse_boxsets` pattern closely
+  (fetch the section's own collections, fetch each one's children via
+  `/library/collections/{id}/children` in parallel, substitute), but the
+  first real Plex test is the thing most likely to need a tweak.
 
 ## Conventions
 
 - Applying artwork always flows through `POST /api/posterdb/apply`
   (`provider` field decides how the bytes are fetched) or
-  `POST /api/artwork/upload` for user files — then `MediaClient.set_image`.
+  `POST /api/artwork/upload` for user files — then `MediaClient.set_image`,
+  then `history.record(...)`. Any new apply path must call all three, in
+  that order — history is written from the bytes that were actually
+  uploaded, not re-fetched from the source afterward.
 - Banners are display-only everywhere: no supported media server has a
   banner-upload endpoint.
 - git checkpoints are tagged (`checkpoint-N`); the user asks for commits

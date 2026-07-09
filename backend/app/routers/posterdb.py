@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Response
 
-from .. import db
+from .. import db, history
 from ..artwork.base import ArtworkError, download_public_image
 from ..media.base import MediaError
 from ..media.factory import client_for
@@ -109,4 +109,5 @@ async def apply(req: ApplyRequest) -> ApplyResult:
     except MediaError as exc:
         return ApplyResult(ok=False, message=f"Upload failed: {exc}")
 
+    history.record(req.server_id, req.item_id, req.target, data, content_type, req.provider)
     return ApplyResult(ok=True, message=f"Updated {req.target} successfully.")

@@ -2,6 +2,7 @@
 // Vite proxies to the backend, in production FastAPI serves this bundle.
 
 import type {
+  ApplyHistoryEntry,
   ApplyResult,
   ArtworkProviderInfo,
   ArtworkResults,
@@ -144,4 +145,13 @@ export const api = {
     }
     return res.json();
   },
+
+  // -- apply history (revert to a previously-applied image) --
+  getHistory: (serverId: number, itemId: string, target?: ImageTarget) =>
+    request<ApplyHistoryEntry[]>(
+      `/history?server_id=${serverId}&item_id=${encodeURIComponent(itemId)}` +
+        (target ? `&target=${target}` : ""),
+    ),
+  revertHistory: (historyId: number) =>
+    request<ApplyResult>(`/history/${historyId}/revert`, { method: "POST" }),
 };

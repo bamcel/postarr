@@ -1,0 +1,61 @@
+"""Apply history: list, view, and revert previously-applied images."""
+
+from __future__ import annotations
+
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query, Response
+
+from .. import db, history
+from ..media.base import MediaError
+from ..media.factory import client_for
+from ..schemas import ApplyHistoryEntry, ApplyResult
+
+router = APIRouter(prefix="/api/history", tags=["history"])
+
+
+@router.get("", response_model=list[ApplyHistoryEntry])
+async def list_history(
+    server_id: int = Query(...), item_id: str = Query(...), target: Optional[str] = Query(None)
+) -> list[ApplyHistoryEntry]:
+    rows = history.list_for_item(server_id, item_id, target)
+    return [
+        ApplyHistoryEntry(
+            id=r["id"],
+            target=r["target"],
+            provider=r["provider"],
+            applied_at=r["applied_at"],
+            thumb_url=f"/api/history/{r['id']}/image",
+        )
+        for r in rows
+    ]
+
+
+@router.get("/{history_id}/image")
+async def history_image(history_id: int) -> Response:
+    entry = history.get_entry(history_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    data, content_type = history.read_image(entry)
+    return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.post("/{history_id}/revert", response_model=ApplyResult)
+async def revert(history_id: int) -> ApplyResult:
+    entry = history.get_entry(history_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    server = db.get_server(entry["server_id"], include_token=True)
+    if server is None:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    data, content_type = history.read_image(entry)
+    try:
+        await client_for(server).set_image(entry["item_id"], entry["target"], data, content_type)
+    except MediaError as exc:
+        return ApplyResult(ok=False, message=f"Revert failed: {exc}")
+
+    # Reverting is itself a new apply — recorded fresh rather than mutating
+    # the entry reverted to, so the history stays a true timeline.
+    history.record(entry["server_id"], entry["item_id"], entry["target"], data, content_type, entry["provider"])
+    return ApplyResult(ok=True, message=f"Reverted {entry['target']}.")

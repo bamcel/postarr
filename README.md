@@ -1,12 +1,12 @@
 # Postarr
 
 **Postarr** is a self-hosted, open-source artwork manager for **Plex / Jellyfin / Emby**
-libraries. Browse your servers — including **collections** (Emby/Jellyfin) — then swap in
-posters, backgrounds, and logos from [ThePosterDB](https://theposterdb.com),
-[Fanart.tv](https://fanart.tv), [TheTVDB](https://thetvdb.com), [AniList](https://anilist.co),
-and [MediUX](https://mediux.pro) — per image, per season (including Season 0 / Specials), per
-title inside a collection, or a whole ThePosterDB set onto a series and all its seasons at
-once.
+libraries. Browse your servers — including **collections** — then swap in posters,
+backgrounds, and logos from [ThePosterDB](https://theposterdb.com), [Fanart.tv](https://fanart.tv),
+[TheTVDB](https://thetvdb.com), [AniList](https://anilist.co), and [MediUX](https://mediux.pro)
+— per image, per season (including Season 0 / Specials), per title inside a collection, or a
+whole ThePosterDB set onto a series and all its seasons at once. Every apply is remembered, so
+a bad pick is one click to undo.
 
 ![Postarr](docs/screenshot.png)
 
@@ -22,11 +22,15 @@ once.
 - **Five artwork sources** behind one panel: ThePosterDB (search → title → set drill-down,
   with per-set poster counts and empty results auto-hidden), plus Fanart.tv, TheTVDB, AniList,
   and MediUX, all looked up automatically by your items' TMDB/TVDB/IMDb/AniList ids.
-- **Collections** (Emby/Jellyfin): a virtual **Collections** library lists every collection on
-  the server — edit a collection's own poster/backdrop, browse the titles inside it, and jump
-  straight to any member's own full detail page. A **Group Collections** toggle on the library
-  view replaces a collection's member movies/shows with a single tile, like Emby's own library
-  view — no more scrolling past every "John Wick" sequel individually.
+- **Collections**: a virtual **Collections** library lists every collection on the server —
+  edit a collection's own poster/backdrop, browse the titles inside it, and jump straight to
+  any member's own full detail page. A **Group Collections** toggle on the library view
+  replaces a collection's member movies/shows with a single tile, like Emby's own library view
+  — no more scrolling past every "John Wick" sequel individually. Live-verified on Emby/Jellyfin;
+  the Plex-side code follows the same shape but hasn't been run against a real Plex server.
+- **Apply history + revert**: every image you apply — from any provider or a manual upload —
+  is remembered (last 5 per poster/background/logo). The **History** tab shows what's been
+  applied to a title with a one-click **Revert**, so a bad pick costs nothing.
 - **Apply anywhere**: set any image as the poster, background, or clear logo — or use
   **Custom** to point it at any target, e.g. a movie poster onto a show's Specials season, or a
   poster from a collection's page directly onto one of its member movies without leaving the
@@ -55,8 +59,9 @@ backend/   FastAPI + SQLite                            (API, scraping, server cl
            app/media/      Plex / Jellyfin / Emby clients behind one interface
            app/posterdb/   ThePosterDB login + scraping
            app/artwork/    Fanart.tv / TheTVDB / AniList / MediUX providers
+           app/history.py  apply history (revert-to-previous-image)
            app/routers/    REST endpoints
-           data/           SQLite db + encryption key (git-ignored)
+           data/           SQLite db, encryption key, apply-history images (git-ignored)
 ```
 
 - **Credentials are encrypted at rest** (Fernet) and never echoed back to the browser.
@@ -169,10 +174,10 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
 ## Using it
 
 1. Pick a server (sidebar) and a **library** (tabs), then **click** a title to open it —
-   the artwork panel searches for it automatically. On Emby/Jellyfin, a **Collections**
-   library tab lists every collection on the server; use the **Group Collections** toggle
-   (top-right of the library view) to switch a regular library between showing each
-   collection's movies/shows individually or collapsed into one tile.
+   the artwork panel searches for it automatically. A **Collections** library tab lists every
+   collection on the server; use the **Group Collections** toggle (top-right of the library
+   view) to switch a regular library between showing each collection's movies/shows
+   individually or collapsed into one tile.
 2. **ThePosterDB tab**: pick a title from the categorized results (Movies / Shows /
    Collections, with counts), hover a cover and **View set (N)** to see the full set, then
    apply single images or **Auto-apply set**.
@@ -183,6 +188,8 @@ Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,
 5. On any image, **Custom** lets you choose exactly where it lands — poster, background,
    logo, a specific season, or — on a collection's page — any of its member movies/shows,
    without leaving the page.
+6. **History tab**: see the last few images applied to this title (per poster/background/logo)
+   and **Revert** to any of them in one click.
 
 ## API
 
@@ -206,6 +213,9 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | `GET/PUT` | `/api/artwork/settings` | Fanart/TVDB API keys |
 | `GET` | `/api/artwork/mediux/image?url=` | cached MediUX thumbnail proxy |
 | `POST` | `/api/artwork/upload` | apply a user-uploaded image file |
+| `GET` | `/api/history?server_id=&item_id=[&target=]` | apply history for a title |
+| `GET` | `/api/history/{id}/image` | a history entry's stored image |
+| `POST` | `/api/history/{id}/revert` | re-apply a history entry as current |
 
 ## License
 

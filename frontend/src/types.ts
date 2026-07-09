@@ -139,3 +139,11 @@ export interface ApplyResult {
   ok: boolean;
   message: string;
 }
+
+export interface ApplyHistoryEntry {
+  id: number;
+  target: ImageTarget;
+  provider: string;
+  applied_at: string;
+  thumb_url: string;
+}
