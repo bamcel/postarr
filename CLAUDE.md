@@ -129,6 +129,19 @@ There is no test suite; verification is done against a live media server.
   to `apply_history` after the table was already created) — needs an
   explicit `ALTER TABLE ... ADD COLUMN` in `db._migrate()`, gated on a
   `PRAGMA table_info` check, run from `init_db()` on every startup.
+- **The container's non-root user doesn't survive a bind mount.** The Dockerfile
+  bakes in `chown -R postarr:postarr /data` at build time, which is enough for a
+  Docker-managed named volume (docker-compose's `postarr-data`) since Docker
+  copies that ownership over on first creation — but a bind mount to a host path
+  (e.g. Unraid's `Type="Path"` config, which Unraid creates as root) always
+  reflects the host directory's actual ownership and ignores the image, so
+  `secret.key`/`postarr.db` writes failed with `PermissionError: [Errno 13]`.
+  Fixed by starting the container as root and using `docker-entrypoint.sh` to
+  `chown -R` `/data` at *runtime* (works for both bind mounts and named
+  volumes) before dropping to uid 10001 via `setpriv --reuid=10001
+  --regid=10001 --init-groups`. Verified live: a fresh root-owned bind-mounted
+  directory now starts cleanly and `docker top` confirms `python run.py` runs
+  as uid 10001, not root.
 - **`apply_history` prunes to the last 50 rows *globally*** (not per item)
   — deletes both the DB row and the file on disk, on every `record()` call.
   Originally per-(server,item,target) capped at 5; changed to one shared

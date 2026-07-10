@@ -79,6 +79,10 @@ summary, not the source of truth.
   sampling instead of fighting the screenshot tool. This has bitten every session so far.
 - **Git Bash on Windows mangles `docker exec`/`docker cp` paths** starting with `/` — wrap
   remote commands in `sh -c '...'` or set `MSYS_NO_PATHCONV=1`.
+- **Unraid (bind-mount) deployments now work** — fixed a `PermissionError` on `/data/secret.key`
+  that only showed up on a bind mount (never on docker-compose's named volume). The container
+  now starts as root, `docker-entrypoint.sh` chowns `/data` at runtime, then drops to uid 10001
+  via `setpriv` before running the app. See CLAUDE.md's gotchas for the full explanation.
 - History thumbnails serve full-resolution images, not resized — bounded by the entry cap now,
   but still no image-resizing dependency (e.g. Pillow) if that's ever worth fixing properly.
 

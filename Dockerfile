@@ -36,11 +36,16 @@ COPY backend/ ./
 # Place the built SPA where the backend expects it (BACKEND_DIR/../frontend/dist).
 COPY --from=frontend /build/frontend/dist /app/frontend/dist
 
-# Run as a non-root user; /data holds the SQLite db + encryption key.
+# The app process itself runs as this non-root user; /data holds the SQLite
+# db + encryption key. The container still starts as root (no USER here) so
+# the entrypoint can fix /data's ownership at runtime before dropping to it
+# — see docker-entrypoint.sh for why that's necessary on top of this bake-in.
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin postarr \
     && mkdir -p /data \
     && chown -R postarr:postarr /data /app
-USER postarr
+
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 VOLUME ["/data"]
 EXPOSE 7979
@@ -49,4 +54,5 @@ EXPOSE 7979
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:7979/api/health').status==200 else 1)"
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "run.py"]
