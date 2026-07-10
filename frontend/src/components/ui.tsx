@@ -37,26 +37,12 @@ export function Logo({ className = "" }: { className?: string }) {
         <Clapperboard className="size-4" />
       </span>
       <span className="text-lg">
-        Post<span className="text-accent">arr</span>
+        Post<span className="text-emerald-400">arr</span>
       </span>
     </div>
   );
 }
 
-const KIND_BADGE: Record<string, string> = {
-  plex: "bg-amber-500/15 text-amber-400",
-  jellyfin: "bg-violet-500/15 text-violet-400",
-  emby: "bg-emerald-500/15 text-emerald-400",
-};
-
 export function ServerTypeBadge({ type }: { type: string }) {
-  return (
-    <span
-      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-        KIND_BADGE[type] ?? "bg-white/10 text-muted"
-      }`}
-    >
-      {type}
-    </span>
-  );
+  return <span className="text-xs text-faint capitalize">{type}</span>;
 }
