@@ -13,7 +13,7 @@
   <Category>MediaApp:Other</Category>
   <WebUI>http://[IP]:[PORT:7979]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/bamcel/postarr/main/postarr.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/bamcel/postarr/main/docs/icon-v3.png</Icon>
+  <Icon>https://raw.githubusercontent.com/bamcel/postarr/main/docs/icon-v4.png</Icon>
   <ExtraParams>--add-host=host.docker.internal:host-gateway</ExtraParams>
   <PostArgs/>
   <CPUset/>
