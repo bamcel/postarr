@@ -43,10 +43,10 @@ RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin postarr \
 USER postarr
 
 VOLUME ["/data"]
-EXPOSE 8000
+EXPOSE 7979
 
 # Lightweight healthcheck using only the stdlib (no curl in slim image).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)"
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:7979/api/health').status==200 else 1)"
 
 CMD ["python", "run.py"]

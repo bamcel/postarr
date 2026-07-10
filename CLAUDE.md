@@ -8,15 +8,15 @@ for the user-facing overview; this file is for working on the code.
 
 ```bash
 # backend (from backend/, venv in backend/.venv)
-python run.py                          # dev server on :8000 (POSTARR_RELOAD=1 for reload)
+python run.py                          # dev server on :7979 (POSTARR_RELOAD=1 for reload)
 .venv/Scripts/python -m ruff check app # lint
 
 # frontend (from frontend/)
-npm run dev                            # Vite on :5173, proxies /api -> :8000
+npm run dev                            # Vite on :5173, proxies /api -> :7979
 npm run build                          # tsc typecheck + production bundle -> dist/
 
 # deploy the running container (rebuilds frontend + backend into the image)
-docker compose up -d --build           # serves SPA + API on :8000
+docker compose up -d --build           # serves SPA + API on :7979
 ```
 
 There is no test suite; verification is done against a live media server.

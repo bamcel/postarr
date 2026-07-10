@@ -11,7 +11,7 @@
   <Project>https://github.com/bamcel/postarr</Project>
   <Overview>Self-hosted artwork manager for Plex, Jellyfin, and Emby. Browse your libraries -- including collections -- and replace posters, backgrounds, and logos using ThePosterDB, Fanart.tv, TheTVDB, AniList, and MediUX, all from one panel per title. The SQLite database and encryption key live in the Data path below, so your servers, credentials, and settings survive container upgrades.</Overview>
   <Category>MediaApp:Other</Category>
-  <WebUI>http://[IP]:[PORT:8000]/</WebUI>
+  <WebUI>http://[IP]:[PORT:7979]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/bamcel/postarr/main/unraid-template.xml</TemplateURL>
   <Icon/>
   <ExtraParams>--add-host=host.docker.internal:host-gateway</ExtraParams>
@@ -21,6 +21,6 @@
   <DonateText/>
   <DonateLink/>
   <Requires/>
-  <Config Name="WebUI Port" Target="8000" Default="8000" Mode="tcp" Description="Port for the Postarr web UI" Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+  <Config Name="WebUI Port" Target="7979" Default="7979" Mode="tcp" Description="Port for the Postarr web UI" Type="Port" Display="always" Required="true" Mask="false">7979</Config>
   <Config Name="Data" Target="/data" Default="/mnt/user/appdata/postarr" Mode="rw" Description="SQLite database + encryption key -- persists your servers, credentials, and settings across upgrades" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/postarr</Config>
 </Container>

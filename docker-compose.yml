@@ -4,7 +4,7 @@ services:
     image: postarr:latest
     container_name: postarr
     ports:
-      - "8000:8000"
+      - "7979:7979"
     volumes:
       # Persists the SQLite database + encryption key across restarts/upgrades.
       - postarr-data:/data

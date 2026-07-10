@@ -85,17 +85,17 @@ A single multi-stage image builds the frontend and serves it together with the A
 to install but Docker.
 
 ```bash
-docker compose up -d --build      # build + run, http://localhost:8000
+docker compose up -d --build      # build + run, http://localhost:7979
 ```
 
 Or without Compose:
 
 ```bash
 docker build -t postarr .
-docker run -d --name postarr -p 8000:8000 -v postarr-data:/data postarr
+docker run -d --name postarr -p 7979:7979 -v postarr-data:/data postarr
 ```
 
-Open **http://localhost:8000**. The SQLite database and encryption key live in the
+Open **http://localhost:7979**. The SQLite database and encryption key live in the
 `postarr-data` volume (`/data` in the container), so your servers and settings survive
 restarts and image upgrades.
 
@@ -113,7 +113,7 @@ To update after pulling new code: `docker compose up -d --build`.
 A ready-made Docker template is at [`unraid-template.xml`](unraid-template.xml) — it points at
 the pre-built image on GHCR (`ghcr.io/bamcel/postarr:latest`, published automatically by
 [a GitHub Action](.github/workflows/docker-publish.yml) on every push to `main`), maps the web
-UI to port `8000`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the same
+UI to port `7979`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the same
 `host.docker.internal` mapping as the Compose file above.
 
 1. **Docker** tab → **Add Container** → scroll to the bottom → **Template repositories** →
@@ -127,7 +127,7 @@ UI to port `8000`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the
 
 ## Quick start (development)
 
-Two processes: the API on `:8000` and the Vite dev server on `:5173` (which proxies `/api`).
+Two processes: the API on `:7979` and the Vite dev server on `:5173` (which proxies `/api`).
 
 **1. Backend**
 
@@ -136,7 +136,7 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate            # Windows  (source .venv/bin/activate on macOS/Linux)
 pip install -r requirements.txt
-python run.py                      # http://localhost:8000
+python run.py                      # http://localhost:7979
 ```
 
 **2. Frontend** (second terminal)
@@ -155,7 +155,7 @@ Build the frontend; FastAPI then serves it from the same origin as the API:
 
 ```bash
 cd frontend && npm run build       # outputs frontend/dist
-cd ../backend && python run.py      # serves the SPA + API on http://localhost:8000
+cd ../backend && python run.py      # serves the SPA + API on http://localhost:7979
 ```
 
 Override host/port/data dir with env vars: `POSTARR_HOST`, `POSTARR_PORT`,

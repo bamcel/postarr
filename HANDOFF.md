@@ -10,7 +10,7 @@ go stale, and don't duplicate what's already in CLAUDE.md/README.md.
 
 - Repo: **`https://github.com/bamcel/postarr`**, branch `main`. Pull before starting work on a
   new device — this file is only accurate as of its last commit.
-- Container `postarr` is normally **up and healthy** on `http://localhost:8000`
+- Container `postarr` is normally **up and healthy** on `http://localhost:7979`
   (`docker compose ps` to confirm on whichever machine you're on — it may be stopped).
 - **Standing instruction**: rebuild the container (`docker compose up -d --build`) after every
   completed change, automatically, without being asked. Commit + push when the user says so
