@@ -129,10 +129,11 @@ UI to port `7979`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the
 3. Open the WebUI from the Docker tab once it's healthy.
 
 Unraid's own **Template repositories** field (Add Container → scroll to the bottom → paste the
-same raw URL → Save) is the "official" way to register a template and technically should also
-work, but its remote fetch has been unreliable in practice — it can silently fall back to a
-blank/default Add Container form even after the template's selected. The local-file method above
-sidesteps that fetch entirely and is what's actually been confirmed working.
+same raw URL → Save) is the "official" way to register a template and should also work. The
+local-file method above is recommended instead because it's what's actually been confirmed
+working — **the file has to land in `templates-user/`, not `templates/`** (the latter is treated
+as Community-Applications/system-managed and silently produces a blank/default Add Container
+form, even with a valid template selected from the dropdown).
 
 ## Quick start (development)
 

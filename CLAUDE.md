@@ -162,19 +162,20 @@ There is no test suite; verification is done against a live media server.
   expecting seems to have vanished mid-testing, check whether repeated
   applies (to *any* title) pushed it out of that window before assuming
   something's broken (bit us once while testing revert).
-- **Unraid's own "Template repositories" remote-fetch is unreliable** —
-  confirmed live: pasting the raw GitHub URL into Add Container → Template
-  repositories → Save, then selecting Postarr from the Template dropdown,
-  still produced a blank/default Add Container form (no WebUI Port/Data
-  rows, Network Type: None) even though the fetched XML itself was valid
-  and complete. Downloading the XML directly onto the box instead —
-  `curl -o /boot/config/plugins/dockerMan/templates-user/postarr.xml
-  https://raw.githubusercontent.com/bamcel/postarr/main/unraid-template.xml`
-  — and selecting it from the Template dropdown worked immediately, full
-  Overview/Network/WebUI Port/Data rows populated correctly. README's
-  Unraid instructions now lead with the local-file method for this reason;
-  don't revert to recommending Template repositories as the primary path
-  without new evidence it's fixed.
+- **A manually-placed Unraid template XML must go in `templates-user/`, not
+  `templates/`.** Confirmed live: the user first dropped the downloaded XML
+  into `/boot/config/plugins/dockerMan/templates/` — selecting Postarr from
+  the Add Container → Template dropdown still produced a blank/default form
+  (no WebUI Port/Data rows, Network Type: None) even though the XML itself
+  was valid and complete. Moving the exact same file to
+  `/boot/config/plugins/dockerMan/templates-user/` fixed it immediately —
+  full Overview/Network/WebUI Port/Data rows populated correctly.
+  `templates/` is treated as Community-Applications/system-managed;
+  `templates-user/` is the directory Unraid actually scans for manually
+  supplied templates. README's Unraid instructions lead with this
+  local-file method (curl straight into `templates-user/`) rather than
+  Unraid's in-UI "Template repositories" paste-a-URL flow, which was never
+  confirmed working in this troubleshooting session.
 
 ## Conventions
 
