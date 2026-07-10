@@ -112,7 +112,7 @@ To update after pulling new code: `docker compose up -d --build`.
 
 ## Run on Unraid
 
-A ready-made Docker template is at [`unraid-template.xml`](unraid-template.xml) — it points at
+A ready-made Docker template is at [`postarr.xml`](postarr.xml) — it points at
 the pre-built image on GHCR (`ghcr.io/bamcel/postarr:latest`, published automatically by
 [a GitHub Action](.github/workflows/docker-publish.yml) on every push to `main`), maps the web
 UI to port `7979`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the same
@@ -121,7 +121,7 @@ UI to port `7979`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the
 1. **Tools → Terminal** (or SSH in) and run:
    ```
    curl -o /boot/config/plugins/dockerMan/templates-user/postarr.xml \
-     https://raw.githubusercontent.com/bamcel/postarr/main/unraid-template.xml
+     https://raw.githubusercontent.com/bamcel/postarr/main/postarr.xml
    ```
 2. **Docker** tab → **Add Container** → pick **Postarr** from the **Template** dropdown at the
    top. Set the **Data** path if you don't want the default `/mnt/user/appdata/postarr`, then

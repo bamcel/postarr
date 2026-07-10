@@ -63,7 +63,7 @@ frosted-glass look (blurred backdrop bleeding behind them, matching Emby's own U
 match a reference screenshot).
 
 Deployment: a GitHub Action publishes the Docker image to GHCR (`ghcr.io/bamcel/postarr:latest`)
-on every push to `main`; an Unraid Docker template (`unraid-template.xml`) points at it.
+on every push to `main`; an Unraid Docker template (`postarr.xml`) points at it.
 
 Full endpoint list, setup steps, and feature descriptions are in README.md — this section is a
 summary, not the source of truth.

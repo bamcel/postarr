@@ -12,7 +12,7 @@
   <Overview>Self-hosted artwork manager for Plex, Jellyfin, and Emby. Browse your libraries -- including collections -- and replace posters, backgrounds, and logos using ThePosterDB, Fanart.tv, TheTVDB, AniList, and MediUX, all from one panel per title. The SQLite database and encryption key live in the Data path below, so your servers, credentials, and settings survive container upgrades.</Overview>
   <Category>MediaApp:Other</Category>
   <WebUI>http://[IP]:[PORT:7979]/</WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/bamcel/postarr/main/unraid-template.xml</TemplateURL>
+  <TemplateURL>https://raw.githubusercontent.com/bamcel/postarr/main/postarr.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/bamcel/postarr/main/docs/icon-v2.png</Icon>
   <ExtraParams>--add-host=host.docker.internal:host-gateway</ExtraParams>
   <PostArgs/>
