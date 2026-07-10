@@ -118,14 +118,21 @@ the pre-built image on GHCR (`ghcr.io/bamcel/postarr:latest`, published automati
 UI to port `7979`, persists `/data` to `/mnt/user/appdata/postarr`, and adds the same
 `host.docker.internal` mapping as the Compose file above.
 
-1. **Docker** tab → **Add Container** → scroll to the bottom → **Template repositories** →
-   paste `https://raw.githubusercontent.com/bamcel/postarr/main/unraid-template.xml` → **Save**.
-2. Postarr now appears as a container to add — set the **Data** path if you don't want the
-   default `/mnt/user/appdata/postarr`, then **Apply**.
+1. **Tools → Terminal** (or SSH in) and run:
+   ```
+   curl -o /boot/config/plugins/dockerMan/templates-user/postarr.xml \
+     https://raw.githubusercontent.com/bamcel/postarr/main/unraid-template.xml
+   ```
+2. **Docker** tab → **Add Container** → pick **Postarr** from the **Template** dropdown at the
+   top. Set the **Data** path if you don't want the default `/mnt/user/appdata/postarr`, then
+   **Apply**.
 3. Open the WebUI from the Docker tab once it's healthy.
 
-(Or skip step 1 and just download the XML into
-`/boot/config/plugins/dockerMan/templates-user/` yourself.)
+Unraid's own **Template repositories** field (Add Container → scroll to the bottom → paste the
+same raw URL → Save) is the "official" way to register a template and technically should also
+work, but its remote fetch has been unreliable in practice — it can silently fall back to a
+blank/default Add Container form even after the template's selected. The local-file method above
+sidesteps that fetch entirely and is what's actually been confirmed working.
 
 ## Quick start (development)
 
