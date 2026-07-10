@@ -132,6 +132,19 @@ class ArtworkResults(BaseModel):
     message: Optional[str] = None
 
 
+class ArtworkSearchResult(BaseModel):
+    id: str                             # the id this provider needs to fetch artwork
+    name: str
+    year: Optional[str] = None
+    thumb_url: Optional[str] = None
+
+
+class ArtworkSearchResults(BaseModel):
+    provider: str
+    results: list[ArtworkSearchResult] = Field(default_factory=list)
+    message: Optional[str] = None
+
+
 class ArtworkProviderInfo(BaseModel):
     name: str
     label: str

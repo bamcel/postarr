@@ -80,6 +80,19 @@ export interface ArtworkResults {
   message?: string | null;
 }
 
+export interface ArtworkSearchResult {
+  id: string;
+  name: string;
+  year?: string | null;
+  thumb_url?: string | null;
+}
+
+export interface ArtworkSearchResults {
+  provider: string;
+  results: ArtworkSearchResult[];
+  message?: string | null;
+}
+
 export interface ArtworkProviderInfo {
   name: string;
   label: string;

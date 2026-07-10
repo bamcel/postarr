@@ -36,6 +36,19 @@ There is no test suite; verification is done against a live media server.
   `external_ids`. MediUX has no public API yet, so it scrapes mediux.pro's
   own server-rendered pages the same way ThePosterDB does, just without
   needing a login.
+- **Title search for Fanart.tv/TheTVDB/MediUX** (`GET /api/artwork/search`,
+  `ArtworkBrowser.tsx`'s id/search box): typing a non-numeric value shows a
+  picker of candidates instead of an id lookup. None of the three has its
+  own title-search API — Fanart.tv has none at all, MediUX's is invite-only
+  beta, and Fanart/MediUX both need a TMDB (or, for Fanart movies, IMDb) id
+  rather than a TVDB one — so all three are backed by `TVDBProvider.search()`
+  (TheTVDB's own `/search` endpoint), which conveniently returns each
+  candidate's `remote_ids` (TMDB/IMDb correlations) alongside its own tvdb
+  id. `remote_id()` in `tvdb.py` pulls the right one out per provider: tvdb
+  id for TVDB (and Fanart shows), TMDB for MediUX, TMDB/IMDb for Fanart
+  movies. This means title search on **any of the three tabs requires a
+  TheTVDB API key**, even when searching from the Fanart.tv or MediUX tab —
+  surfaced as a friendly message, not an error, when the key's missing.
 - `frontend/src/components/ArtworkPanel.tsx` — provider selector wrapping
   `PosterDBBody` (ThePosterDB drill-down), `ArtworkBrowser` (API providers),
   and `ManualUpload`. Apply targets are built once in `lib/targets.ts`.

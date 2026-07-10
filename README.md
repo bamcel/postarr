@@ -21,7 +21,9 @@ a bad pick is one click to undo.
 
 - **Five artwork sources** behind one panel: ThePosterDB (search → title → set drill-down,
   with per-set poster counts and empty results auto-hidden), plus Fanart.tv, TheTVDB, AniList,
-  and MediUX, all looked up automatically by your items' TMDB/TVDB/IMDb/AniList ids.
+  and MediUX, all looked up automatically by your items' TMDB/TVDB/IMDb/AniList ids. If an id
+  isn't known, type a title into the Fanart.tv, TheTVDB, or MediUX search box instead and pick
+  the right match from the results.
 - **Collections**: a virtual **Collections** library lists every collection on the server —
   edit a collection's own poster/backdrop, browse the titles inside it, and jump straight to
   any member's own full detail page. A **Group Collections** toggle on the library view
@@ -217,6 +219,7 @@ Interactive docs are available at `/docs` when the backend is running. Key endpo
 | `GET` | `/api/posterdb/image?url=` | cached ThePosterDB thumbnail proxy |
 | `POST` | `/api/posterdb/apply` | download an image + apply to a server |
 | `GET` | `/api/artwork?provider=&server_id=&item_id=[&id_override=]` | Fanart/TVDB/AniList/MediUX artwork |
+| `GET` | `/api/artwork/search?provider=&server_id=&item_id=&query=` | title search + picker for Fanart/TVDB/MediUX when no id is known |
 | `GET/PUT` | `/api/artwork/settings` | Fanart/TVDB API keys |
 | `GET` | `/api/artwork/mediux/image?url=` | cached MediUX thumbnail proxy |
 | `POST` | `/api/artwork/upload` | apply a user-uploaded image file |

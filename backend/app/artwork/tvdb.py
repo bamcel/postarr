@@ -36,6 +36,18 @@ def _abs(url: str) -> str:
     return url if url.startswith("http") else _ARTWORK_HOST + url.lstrip("/")
 
 
+def remote_id(candidate: dict, source_name: str) -> Optional[str]:
+    """Pull a correlated id (e.g. "TheMovieDB.com", "IMDB") out of a TVDB
+    /search result's ``remote_ids`` list — TVDB indexes these even though its
+    own artwork API only ever wants a TVDB id itself. Fanart.tv's movie
+    endpoint needs TMDB/IMDb, not TVDB, so this is how its title search
+    resolves a candidate to the id Fanart actually wants."""
+    for r in candidate.get("remote_ids") or []:
+        if r.get("sourceName") == source_name:
+            return str(r.get("id"))
+    return None
+
+
 class TVDBProvider(ArtworkProvider):
     name = "tvdb"
     label = "TheTVDB"
@@ -81,6 +93,18 @@ class TVDBProvider(ArtworkProvider):
             t["id"]: (t.get("slug") or t.get("name") or "").lower()
             for t in resp.json().get("data", [])
         }
+
+    async def search(self, query: str, kind: str) -> list[dict]:
+        if not self._key():
+            raise ArtworkError(
+                "Title search needs a TheTVDB API key (Settings) — it's the only title search "
+                "available (Fanart.tv itself has no search API)."
+            )
+        async with self._http() as client:
+            resp = await self._auth_get(client, "/search", params={"query": query, "type": kind})
+        if resp.status_code >= 400:
+            raise ArtworkError(f"TheTVDB error ({resp.status_code}).")
+        return resp.json().get("data") or []
 
     async def fetch(self, item: ItemDetail, id_override: Optional[str] = None) -> list[ArtworkItem]:
         if not self._key():

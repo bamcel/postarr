@@ -37,6 +37,15 @@ class ArtworkProvider(abc.ABC):
         relying solely on the media server's own external_ids.
         """
 
+    async def search(self, query: str, kind: str) -> list[dict]:
+        """Title search, returning raw provider-specific candidate dicts.
+
+        Optional — only providers with a real search API implement this
+        (currently just TheTVDB; ``kind`` is "movie" or "series"). Providers
+        that don't override this raise NotImplementedError.
+        """
+        raise NotImplementedError
+
     # -- helpers ----------------------------------------------------------
     @staticmethod
     def _http() -> httpx.AsyncClient:

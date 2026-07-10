@@ -15,7 +15,13 @@ import { Loader2, AlertCircle, ExternalLink, ImageOff, Search } from "lucide-rea
 import { api } from "../api/client";
 import { useToast } from "../lib/toast";
 import CustomTargetButton from "./CustomTargetButton";
-import type { ArtworkItem, ArtworkType, ImageTarget, ItemDetail } from "../types";
+import type { ArtworkItem, ArtworkSearchResult, ArtworkType, ImageTarget, ItemDetail } from "../types";
+
+// Fanart.tv, TheTVDB, and MediUX have no title-search API of their own —
+// all three are backed by TheTVDB's /search endpoint on the backend (see
+// backend/app/routers/artwork.py's /artwork/search). AniList doesn't need
+// this: its own fetch already accepts a free-text title directly.
+const TITLE_SEARCH_PROVIDERS = new Set(["fanart", "tvdb", "mediux"]);
 
 const TYPE_ORDER: ArtworkType[] = ["poster", "background", "banner", "logo"];
 const TYPE_LABEL: Record<ArtworkType, string> = {
@@ -37,10 +43,10 @@ function defaultIdFor(provider: string, item: ItemDetail): string {
 }
 
 function idPlaceholder(provider: string, item: ItemDetail): string {
-  if (provider === "fanart") return item.type === "movie" ? "TMDB or IMDb id…" : "TVDB id…";
-  if (provider === "tvdb") return "TVDB id…";
+  if (provider === "fanart") return item.type === "movie" ? "TMDB/IMDb id or a title…" : "TVDB id or a title…";
+  if (provider === "tvdb") return "TVDB id or a title…";
   if (provider === "anilist") return "AniList id or title…";
-  if (provider === "mediux") return "TMDB id…";
+  if (provider === "mediux") return "TMDB id or a title…";
   return "id…";
 }
 
@@ -91,9 +97,14 @@ export default function ArtworkBrowser({
   // replaces auto-detection for this lookup.
   const [idInput, setIdInput] = useState(() => defaultIdFor(provider, item));
   const [override, setOverride] = useState<string | undefined>(undefined);
+  // A non-numeric submission on a title-search-capable provider (Fanart.tv,
+  // TheTVDB) triggers a title search instead of an id lookup; the results
+  // are shown as a picker, and choosing one sets `override` as usual.
+  const [searchTerm, setSearchTerm] = useState<string | undefined>(undefined);
   useEffect(() => {
     setIdInput(defaultIdFor(provider, item));
     setOverride(undefined);
+    setSearchTerm(undefined);
   }, [provider, item.id]);
 
   const q = useQuery({
@@ -102,9 +113,28 @@ export default function ArtworkBrowser({
     staleTime: 5 * 60_000,
   });
 
+  const searchQ = useQuery({
+    queryKey: ["artwork-search", provider, serverId, item.id, searchTerm],
+    queryFn: () => api.searchArtwork(provider, serverId, item.id, searchTerm!),
+    enabled: !!searchTerm,
+    staleTime: 5 * 60_000,
+  });
+
   const submitId = (e: FormEvent) => {
     e.preventDefault();
-    setOverride(idInput.trim() || undefined);
+    const val = idInput.trim();
+    if (val && TITLE_SEARCH_PROVIDERS.has(provider) && !/^\d+$/.test(val)) {
+      setSearchTerm(val);
+    } else {
+      setSearchTerm(undefined);
+      setOverride(val || undefined);
+    }
+  };
+
+  const pickSearchResult = (result: ArtworkSearchResult) => {
+    setSearchTerm(undefined);
+    setIdInput(result.id);
+    setOverride(result.id);
   };
 
   const byType = useMemo(() => {
@@ -172,6 +202,44 @@ export default function ArtworkBrowser({
         <ExternalLink className="size-4" />
       </a>
     </form>
+  );
+
+  const searchPicker = searchTerm && (
+    <div className="mb-3 rounded-lg border border-border bg-surface-2 p-2">
+      {searchQ.isLoading ? (
+        <div className="flex items-center gap-2 px-2 py-3 text-sm text-faint">
+          <Loader2 className="size-4 animate-spin" /> Searching…
+        </div>
+      ) : searchQ.isError ? (
+        <p className="px-2 py-3 text-sm text-danger">{(searchQ.error as Error).message}</p>
+      ) : searchQ.data?.message ? (
+        <p className="px-2 py-3 text-sm text-muted">{searchQ.data.message}</p>
+      ) : (searchQ.data?.results.length ?? 0) === 0 ? (
+        <p className="px-2 py-3 text-sm text-faint">No matches for "{searchTerm}".</p>
+      ) : (
+        <ul className="max-h-72 space-y-0.5 overflow-y-auto">
+          {searchQ.data!.results.map((r) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => pickSearchResult(r)}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-elevated"
+              >
+                {r.thumb_url ? (
+                  <img src={r.thumb_url} alt="" className="h-10 w-7 shrink-0 rounded bg-base object-cover" />
+                ) : (
+                  <span className="h-10 w-7 shrink-0 rounded bg-base" />
+                )}
+                <span className="min-w-0 flex-1 truncate">
+                  {r.name}
+                  {r.year && <span className="text-faint"> ({r.year})</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 
   let body: ReactNode;
@@ -293,6 +361,7 @@ export default function ArtworkBrowser({
   return (
     <div>
       {searchBar}
+      {searchPicker}
       {body}
     </div>
   );

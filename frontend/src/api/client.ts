@@ -6,6 +6,7 @@ import type {
   ApplyResult,
   ArtworkProviderInfo,
   ArtworkResults,
+  ArtworkSearchResults,
   ArtworkSettings,
   ConnectionTest,
   HistoryPurgeResult,
@@ -122,6 +123,10 @@ export const api = {
     request<ArtworkResults>(
       `/artwork?provider=${provider}&server_id=${serverId}&item_id=${encodeURIComponent(itemId)}` +
         (idOverride ? `&id_override=${encodeURIComponent(idOverride)}` : ""),
+    ),
+  searchArtwork: (provider: string, serverId: number, itemId: string, query: string) =>
+    request<ArtworkSearchResults>(
+      `/artwork/search?provider=${provider}&server_id=${serverId}&item_id=${encodeURIComponent(itemId)}&query=${encodeURIComponent(query)}`,
     ),
 
   // Manual image upload (multipart — let the browser set the boundary).
