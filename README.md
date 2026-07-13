@@ -8,7 +8,23 @@ backgrounds, and logos from [ThePosterDB](https://theposterdb.com), [Fanart.tv](
 whole ThePosterDB set onto a series and all its seasons at once. Every apply is remembered, so
 a bad pick is one click to undo.
 
-![Postarr](docs/screenshot.png)
+![Postarr — library view](docs/Library_Dashboard.png)
+
+_Open a title and swap its artwork from any of five sources — here ThePosterDB (auto-apply a
+whole set) and MediUX (per-season and custom-target apply) for the same show._
+
+<p align="center">
+  <img src="docs/Auto_Apply_Poster_Set.png" width="49%" alt="Title detail with the ThePosterDB artwork panel and Auto-apply set" />
+  <img src="docs/Custom_Select.png" width="49%" alt="Title detail with MediUX artwork and the custom target picker" />
+</p>
+
+_Configure your media servers and artwork sources once in Settings — credentials are
+encrypted at rest and never sent back to the browser._
+
+<p align="center">
+  <img src="docs/Server_Setup.png" width="49%" alt="Settings — media server setup" />
+  <img src="docs/Database_Connection.png" width="49%" alt="Settings — artwork source accounts and API keys" />
+</p>
 
 > ⚠️ ThePosterDB has no public API. Postarr scrapes it while signed in with **your own
 > account**, the same way the established community tools do. Use it for your own libraries

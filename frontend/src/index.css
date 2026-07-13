@@ -31,14 +31,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Slim, dark scrollbars to match the surface. */
+/* Slim, dark scrollbars to match the surface. The track is a translucent black
+   wash (not fully transparent, not opaque) — matching the item detail page's own
+   bg-black/55 scrim — so on that page it tints the fixed, full-bleed backdrop
+   showing through the gutter to blend with the darkened content beside it,
+   rather than either revealing the bright raw image (transparent) or painting a
+   flat black strip (opaque). On normal pages it sits over the base background
+   and is barely visible. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-elevated) transparent;
+  scrollbar-color: var(--color-elevated) rgba(0, 0, 0, 0.55);
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.55);
 }
 *::-webkit-scrollbar-thumb {
   background: var(--color-elevated);

@@ -48,27 +48,35 @@ export default function ItemDetailPage() {
       </div>
 
       {/* Left: hero + seasons */}
-      <div className="relative h-full flex-1 overflow-y-auto">
-        {/* Darkening gradients: scoped to just the hero column (not the fixed
-            image above) for text contrast — a uniform dark wash, with extra
-            darkening on the left (behind the poster/title/logo) and at the
-            bottom (behind the seasons row). */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 bg-black/55" />
-          <div className="absolute inset-0 bg-gradient-to-r from-base/95 via-base/60 via-50% to-transparent to-90%" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-50% to-base/85" />
-        </div>
+      <div className="h-full flex-1 overflow-y-auto">
+        {/* min-h-full lets this wrapper be at least a viewport tall but grow to
+            the full scrolled content height. The darkening layer below is
+            absolute inset-0 against THIS wrapper, so it covers every season row
+            — not just the first viewport. (An absolute inset-0 sized against the
+            scroll container itself only spans one visible viewport and scrolls
+            away, leaving multi-season shows showing the raw, undarkened backdrop
+            at the bottom.) */}
+        <div className="relative min-h-full">
+          {/* Darkening gradients: scoped to just the hero column (not the fixed
+              image above) for text contrast — a uniform dark wash, with extra
+              darkening on the left (behind the poster/title/logo) and at the
+              bottom (behind the seasons row). */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 bg-black/55" />
+            <div className="absolute inset-0 bg-gradient-to-r from-base/95 via-base/60 via-50% to-transparent to-90%" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-50% to-base/85" />
+          </div>
 
-        {/* Back button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="absolute left-5 top-5 z-10 grid size-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/70"
-          aria-label="Back"
-        >
-          <ArrowLeft className="size-5" />
-        </button>
+          {/* Back button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="absolute left-5 top-5 z-10 grid size-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/70"
+            aria-label="Back"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
 
-        <div className="relative z-[1] px-8 pb-10 pt-16">
+          <div className="relative z-[1] px-8 pb-10 pt-16">
           {detailQ.isLoading && <Spinner label="Loading…" />}
           {detailQ.isError && (
             <EmptyState title="Couldn't load this title">
@@ -170,6 +178,7 @@ export default function ItemDetailPage() {
               )}
             </>
           )}
+          </div>
         </div>
       </div>
 
